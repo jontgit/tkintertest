@@ -3,12 +3,24 @@ import tkinter.filedialog as fd
 from tkinter import ttk
 
 import tkinter.font as font
-from lib.pythonping import ping
-import csv, json, re, socket, time, sys, yaml, importlib
+#from lib.pythonping import ping
+import csv
+import json
+import re
+import socket
+import time
+import sys
+import yaml
+import importlib
+import os
+import shutil
+import datetime
 
 from threading import Thread
 from queue import Queue
 from os import listdir
+
+from ide import Editor
 
 from netmiko import (
     ConnectHandler,
@@ -38,6 +50,7 @@ class NamespaceLookup(Thread):
 
     def lookup(self, device):
         try:
+            time.sleep(0.1)
             address = socket.gethostbyname(device['hostname'])
             self.root.device_data[device["index"]]['address'] = address
         except socket.gaierror:
@@ -62,6 +75,7 @@ class RemoteConnection():
         self.username = job['username']
         self.password = job['password']
         self.device_type = job['device_type']
+        self.folder = job['log_folder']
         self.additional_data = job['additional_data']
         self.script = job['script'].Script(self)
 
@@ -69,13 +83,14 @@ class RemoteConnection():
         self.config = False
 
     def connect_to_device(self):
+        current_time = datetime.datetime.now()
         self.device = {
             "device_type": self.device_type,
             "host": self.hostname,
             "username": self.username,
             "password": self.password,
             "secret": self.password,
-            "session_log": f"./logs/{self.hostname}.log",
+            "session_log": f"{self.folder}{current_time.strftime('%Y-%m-%d-%H-%M-%S')}---{self.hostname}.log",
         }
 
         try:
@@ -227,6 +242,7 @@ class JobList(tk.Canvas):
         """
         super().__init__(parent, bg="#FFFFFF")
         self.root = root
+        self.parent = parent
         self.scrollbar = tk.Scrollbar(parent, orient="vertical")
         self.scrollbar.pack(side="left", fill="y")
         self.config(yscrollcommand=self.scrollbar.set)
@@ -259,9 +275,6 @@ class JobList(tk.Canvas):
         
         self.load_images()
         
-        self.create_headers()
-        #self.load_data(self.root.device_data)
-        
         parent.update()
         self.config(scrollregion=self.bbox("all"))
 
@@ -276,7 +289,7 @@ class JobList(tk.Canvas):
         self.unbind_all("<MouseWheel>")
 
     def _on_mousewheel(self, event):
-        if self.winfo_height() <= self.winfo_height():
+        if self.winfo_height() <= self.frame.winfo_height():
             self.yview_scroll(int(-1*(event.delta/120)), "units")
 
 
@@ -298,7 +311,7 @@ class JobList(tk.Canvas):
 
     def update_job_status(self, row):
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
-        self.jobs[row][2].configure(text=self.root.device_data[row]['status'])
+        self.jobs[row][2].configure(text=self.root.device_data[row]['status'].capitalize())
         
         if self.root.device_data[row]['active']:
             self._set_row_enabled(row)
@@ -587,12 +600,12 @@ class JobList(tk.Canvas):
 
             line_frame.grid_columnconfigure(4, weight=1)
             
-            if len(line['hostname']) > 21:
-                hostname = f"{line['hostname'][:21]}..."
+            if len(line['hostname']) > 30:
+                hostname = f"{line['hostname'][:30]}..."
             else:
-                hostname = line['hostname'].ljust(24)
+                hostname = line['hostname'].ljust(33)
             
-            hostname = tk.Label(line_frame, text=hostname, font='TkFixedFont', borderwidth=1, relief="flat", bg="#FFFFFF")
+            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), borderwidth=1, relief="flat", bg="#FFFFFF")
             if not line['active']:
                 hostname.configure(fg="#A1A1A1")
             hostname.grid(row=0, column=1, ipadx=3, sticky="nesw")
@@ -604,18 +617,20 @@ class JobList(tk.Canvas):
                 
             status_icon.grid(row=0, column=3, ipadx=3, sticky="nesw")
             
-            status = tk.Label(line_frame, text=line['status'].capitalize(), font='TkFixedFont', anchor="w", borderwidth=1, relief="flat", bg="#FFFFFF")
+            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize(), anchor="w", borderwidth=1, relief="flat", bg="#FFFFFF")
             if not line['active']:
                 status.configure(fg="#A1A1A1")
             status.grid(row=0, column=4, ipadx=3, sticky="nesw")
             
             if str(line_frame) == self.focus_frame:
-                #for cell in line_frame.children:
                 self._set_row_border(line_frame, "black")
                 self.focus_frame = line_frame
                          
             self.jobs.append((hostname, status_icon, status, line_frame))
     
+        self.parent.update()
+        self.config(scrollregion=self.bbox("all"))
+
     def create_headers(self):
 
         self.frame.grid_columnconfigure(1, weight=1)
@@ -629,7 +644,7 @@ class JobList(tk.Canvas):
         self.hostname_header.grid(row=0, column=1, sticky="nesw")
         
         self.status_header = tk.Label(self.frame, text="Status")#, borderwidth=1, relief="ridge")
-        self.status_header.grid(row=0, column=2, columnspan=3, sticky="nesw")
+        self.status_header.grid(row=0, column=2, columnspan=2, sticky="nesw")
         
 class JobData(tk.Canvas):
     
@@ -655,9 +670,12 @@ class JobData(tk.Canvas):
 
         self.session_log_tab = tk.Frame(self.job_data_window)
         self.job_data_window.add(self.session_log_tab, text="Session Logs")
+        
+        self.session_log_selection = ttk.Combobox(self.session_log_tab)
+        self.session_log_selection.place(relwidth=1, height=24)
 
         self.session_log = tk.Text(self.session_log_tab, relief=tk.FLAT, highlightthickness=1, highlightbackground="darkgrey")
-        self.session_log.place(relwidth=1, relheight=1, height=-18)
+        self.session_log.place(relwidth=1, y=24, relheight=1, height=-25)
         self.session_log.configure(state='disabled')
         
     def selection_change(self):
@@ -737,7 +755,6 @@ class Application(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        
         self.all_selected = False
         self.debug = True
         self.selection_index = 0
@@ -771,11 +788,12 @@ class Application(tk.Tk):
         self.file_menu.add_command(label="Import CSV", command=self.import_csv)
         self.file_menu.add_command(label="Open Job", command=self.import_csv)
 
-
         self.scripts_menu = tk.Menu(self.toolbar, tearoff="off")
         self.toolbar.add_cascade(label="Scripts", menu=self.scripts_menu)
-        self.scripts_menu.add_command(label="Create New", command=self.import_csv)
-        self.scripts_menu.add_command(label="Edit", command=self.import_csv)
+        self.scripts_menu.add_command(label="Create New", command=self.editor_new_file)
+        self.scripts_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
+        self.scripts_menu.add_command(label="Edit", command=self.editor_edit_file)
+        self.scripts_menu.add_command(label="Delete", command=self.delete_script)
 
         ###
         ### Main window grid config
@@ -867,18 +885,12 @@ class Application(tk.Tk):
             self.import_csv()
 
     def _load_scripts(self):
-        """self.scripts = []
-        for file in listdir("./scripts/"):
-            with open(f"./scripts/{file}", 'r') as script_file:
-                script_data = json.load(script_file)
-                self.scripts.append(script_data)"""
         self.scripts = {}
         for file in listdir("./scripts/"):
             if file != "__pycache__":
                 my_module = importlib.import_module(f"scripts.{file[:-3]}")
                 test = my_module.Script("")
                 self.scripts[test.title] = my_module
-        #print(test.info())
 
 
     def update_job_status(self, row, status):
@@ -897,27 +909,25 @@ class Application(tk.Tk):
     def search_job_csv(self):
         pass    
 
-    def create_job(self):
-        """
-        Creates a new job in the jobs folder, if a name
-        has not been specified, just uses the name job_n
-        n being the amount of non-named jobs.
+    def editor_new_file(self):
+        self.editor_window = tk.Toplevel(self)
+        self.editor = Editor(self.editor_window, title="Untitled - Script Editor")
+        self.editor.place(relheight=1, relwidth=1)
 
-        Creates a folder structure as below: 
-        job_1
-            input
-                input_data.csv
-            logs
-                device_1
-                    &Y-&M-&D-&H-&M-&S---device_1.log
-                device_2
-                    &Y-&M-&D-&H-&M-&S---device_2.log
-                    &Y-&M-&D-&H-&M-&S---device_2.log
-            job.yaml
-            debug.log
-                        
-        """
-        pass    
+    def editor_edit_file(self):
+        self.editor_window = tk.Toplevel(self)
+        script = self.scripts[self.script_select.get()].Script(0)
+        self.editor = Editor(self.editor_window, title=f"{script.title} - Script Editor", text=script.base_script)
+        self.editor.place(relheight=1, relwidth=1)
+
+    def editor_edit_current_file(self):
+        self.editor_window = tk.Toplevel(self)
+        script = self.scripts[self.script_select.get()].Script(0)
+        self.editor = Editor(self.editor_window, title=f"{script.title} - Script Editor", text=script.base_script)
+        self.editor.place(relheight=1, relwidth=1)
+
+    def delete_script(self):
+        pass
 
     def save_job(self):
         pass    
@@ -940,7 +950,8 @@ class Application(tk.Tk):
                 "hostname" : self.device_data[host]['hostname'],
                 "index" : host,
                 "device_type" : "cisco_ios",
-                "script": self.scripts[self.script_select.get()],
+                "script" : self.scripts[self.script_select.get()],
+                "log_folder" : self.device_data[host]['log_folder'],
                 "additional_data" : self.device_data[host]['additional_data']
                 }
             )
@@ -965,14 +976,39 @@ class Application(tk.Tk):
         self.update_idletasks()
 
     def import_csv(self):
+        """
+        Creates a new job in the jobs folder, if a name
+        has not been specified, just uses the name job_n
+        n being the amount of non-named jobs.
+
+        Creates a folder structure as below: 
+        job_1
+            jobdata.json
+            debug.log
+            input
+            `---input_data.csv
+            logs
+            |---device_1
+            |   `---&Y-&M-&D-&H-&M-&S---device_1.log
+            `---device_2
+                `---&Y-&M-&D-&H-&M-&S---device_2.log
+                `---&Y-&M-&D-&H-&M-&S---device_2.log
+            script
+            `---script.py
+    
+        """
+
         if not self.debug:
             self.set_status("Loading Data...")
             filename = fd.askopenfilename()
         else:
-            filename = "test.csv"
+            filename = "test_firewalls.csv"
 
         if filename[-3:] == 'csv':
             self.device_data = []
+
+            #self.create_job(filename)
+
             with open(filename, 'r') as csv_file:
 
                 input_data = csv.DictReader(csv_file)
@@ -992,16 +1028,27 @@ class Application(tk.Tk):
                         'address' : 'N/a',
                         'status' : 'pending',
                         'index' : n,
-                        'additional_data' : additional_data,
-                        'job_data' : {}
+                        'log_folder' : f"./jobs/{filename[:-4]}/logs/{hostname}/",
+                        'additional_data' : additional_data
                     })
                 
+            if filename[:-4] not in listdir("./jobs/"):
+                os.makedirs(f"./jobs/{filename[:-4]}")
+                os.makedirs(f"./jobs/{filename[:-4]}/input")
+                os.makedirs(f"./jobs/{filename[:-4]}/logs")
+                os.makedirs(f"./jobs/{filename[:-4]}/script")
+
+            if not os.path.exists(f"./jobs/{filename[:-4]}/input/{filename}"):
+                shutil.copyfile(filename, f"./jobs/{filename[:-4]}/input/{filename}")
+
             for device in self.device_data:
                 self.lookup_queue.put(device)
-            
+
+                if not os.path.exists(f"./jobs/{filename[:-4]}/logs/{device['hostname']}"):
+                    os.makedirs(f"./jobs/{filename[:-4]}/logs/{device['hostname']}")
                 
             self.job_list.load_data(self.device_data)
-            self.set_status("Loaded Data.")
+            self.set_status(f"Loaded Data. ({len(self.device_data)} Devices)")
             self.change_focus(0)
             #self.status.set("Idle")
 
