@@ -2,14 +2,10 @@ import re
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
-"""
-        text.highlight_pattern(r"([\w\_\d\-\.]+)(?=\s*\=)", "variable_assignment")
-        text.highlight_pattern(r"([\w\_\d\-\.]+)(?:\()", "function_call")
-        text.highlight_pattern(r"\".*\"", "double_quotes")
-        text.highlight_pattern(r"\'.*\'", "single_quotes")
-        text.highlight_pattern(r"[\(\)]", "brackets")
-        text.highlight_pattern(r"(^|\s+)(in|for|while|return|break|import)\s+", "loop_statement")
-"""
+import shutil
+import importlib
+
+
 syntax = [
     {
         "regex" : r"([\w\_\d\-\.]+)(?=\s*\=|\s+in)",
@@ -65,13 +61,37 @@ syntax = [
 
 
 class Editor(tk.Frame):
-    def __init__(self, parent, title="Untitled - Script Editor", text=""):
+    def __init__(self, parent, root, title, text, script):
         super().__init__(parent, bg="grey15")
+        
+        self.base_script = """
+class Script():
+    def __init__(self, remote_connection):
+        self.remote_connection = remote_connection
+        self.title = \"\"
+        self.description = \"\"
+        self.device = \"\"
+        self.base_script = \"\"\"<BASE_SCRIPT>\"\"\"
 
+    def run(self):
+        <SCRIPT>
+
+        vars = locals()
+        del(vars[\"self\"])
+        return vars
+        """
+        
+        self.script = script
         self.toolbar = tk.Menu(self)
-        parent.title(title)
+        if title == "":
+            parent.title("Untitled - Script Edtior")
+        else:
+            parent.title(f"{title} - Script Edtior")
+            
+        self.title = title
         parent.config(menu = self.toolbar)
         parent.geometry("900x500")
+        self.root = root
 
         self.file_menu = tk.Menu(self.toolbar, tearoff="off")
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
@@ -93,8 +113,18 @@ class Editor(tk.Frame):
         self.edit_menu.add_separator()
         self.edit_menu.add_command(label="Find", command=self.find)
 
-        text = CustomText(self, text)
-        text.place(relheight=1, relwidth=1, x=40, width=-40)
+        self.text = CustomText(self, text)
+        self.text.place(relheight=1, relwidth=1, x=40, width=-40)
+
+    def procress_script(self):
+        amended_script = ""
+        for line in self.text.get("1.0","end").split('\n'):
+            new_line = line.replace("send_command", "self.remote_connection.send_command")
+            amended_script += f"        {new_line}\n"
+        return amended_script
+
+    def remove_newlines(self):
+        pass
 
     def new_file(self):
         pass
@@ -103,7 +133,42 @@ class Editor(tk.Frame):
         pass
 
     def save(self):
-        pass
+        new_script = self.procress_script()
+        base_script = self.base_script
+        
+        base_script = base_script.replace(
+            "        self.title = \"\"", 
+            f"        self.title = \"{self.script.title}\""
+        )
+        
+        base_script = base_script.replace(
+             "        self.description = \"\"", 
+            f"        self.description = \"{self.script.description}\""
+        )
+        
+        base_script = base_script.replace(
+             "        self.device = \"\"", 
+            f"        self.device = \"{self.script.device}\""
+        )
+        
+        base_script = base_script.replace(
+             "<BASE_SCRIPT>",
+            f"{self.text.get('1.0','end')}"
+        )
+        
+        base_script = base_script.replace(
+             "        <SCRIPT>", 
+            f"{new_script}"
+        )
+        
+        current_script = ""
+        with open(f"./scripts/{self.title}.py", 'w') as script_file:
+            script_file.write(base_script)
+            
+        importlib.reload(self.root.scripts[self.script.title])
+        
+            
+        
 
     def save_as(self):
         pass
