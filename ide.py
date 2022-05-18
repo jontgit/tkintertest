@@ -3,6 +3,70 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 
+class TextLineNumbers(tk.Canvas):
+    def __init__(self, *args, **kwargs):
+        tk.Canvas.__init__(self, *args, **kwargs)
+        self.textwidget = None
+
+    def attach(self, text_widget):
+        self.textwidget = text_widget
+        
+    def redraw(self, *args):
+        '''redraw line numbers'''
+        self.delete("all")
+
+        i = self.textwidget.index("@0,0")
+        while True :
+            dline= self.textwidget.dlineinfo(i)
+            if dline is None: break
+            y = dline[1]
+            linenum = str(i).split(".")[0]
+            self.create_text(2,y,anchor="nw", text=linenum)
+            i = self.textwidget.index("%s+1line" % i)
+
+class LineCount(tk.Canvas):
+    def __init__(self, parent):
+        super().__init__(parent, bg="grey15")
+        
+        #self.scrollbar = tk.Scrollbar(parent, orient="vertical")
+        #self.scrollbar.pack(side="left", fill="y")
+        #self.config(yscrollcommand=self.scrollbar.set)
+        #self.scrollbar.config(command=self.yview)
+        
+        self.bind("<MouseWheel>", self._on_mousewheel)
+        self.bind('<Enter>', self._bound_to_mousewheel)
+        self.bind('<Leave>', self._unbound_to_mousewheel)
+        
+        self.frame = tk.Frame(self, bg="grey15")
+        self.pack(fill="both", expand=True)
+        
+        self.create_window(0, 0, window=self.frame, anchor='nw', width=382)
+
+        
+        
+        #self.frame.place(relheight=1, relwidth=1)
+        for i in range(100):
+            label = tk.Label(self.frame, bg="grey15", fg="grey80", text=f"{i}", font=("Consolas", 14, "bold"))
+            label.place(y=(22*i)+1, x=0, height=22)
+            #label.grid(row=i, column=0)
+
+
+        
+        self.config(scrollregion=self.bbox("all"))
+        parent.update()
+
+    def _bound_to_mousewheel(self, event):
+        self.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbound_to_mousewheel(self, event):
+        self.unbind_all("<MouseWheel>")
+
+    def _on_mousewheel(self, event):
+        if self.winfo_height() <= self.winfo_height():
+            print(self.winfo_height())
+            self.yview_scroll(int(-1*(event.delta/120)), "units")
+            print(self.yview_scroll, int(-1*(event.delta/120)))
+
 class CustomText(tk.Text):
     """
     Wrapper for the tkinter.Text widget with additional methods for
@@ -28,6 +92,31 @@ class CustomText(tk.Text):
         self.tag_config("single_quotes", foreground="burlywood3")
         self.tag_config("brackets", foreground="yellow")
         self.tag_config("loop_statement", foreground="plum3")
+        
+
+        # create a proxy for the underlying widget
+        self._orig = self._w + "_orig"
+        self.tk.call("rename", self._w, self._orig)
+        self.tk.createcommand(self._w, self._proxy)
+
+    def _proxy(self, *args):
+        # let the actual widget perform the requested action
+        cmd = (self._orig,) + args
+        result = self.tk.call(cmd)
+
+        # generate an event if something was added or deleted,
+        # or the cursor position changed
+        if (args[0] in ("insert", "replace", "delete") or 
+            args[0:3] == ("mark", "set", "insert") or
+            args[0:2] == ("xview", "moveto") or
+            args[0:2] == ("xview", "scroll") or
+            args[0:2] == ("yview", "moveto") or
+            args[0:2] == ("yview", "scroll")
+        ):
+            self.event_generate("<<Change>>", when="tail")
+
+        # return what the actual widget returned
+        return result   
         
         
     def highlight(self, tag, start, end):
@@ -69,36 +158,16 @@ class CustomText(tk.Text):
         self.clean_highlights(tag)
         self.highlight_all(pattern, tag)
 
-class ScriptEditor(tk.Canvas):
-    
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.frame = tk.Frame(self)
-        self.frame.place(relheight=1, relwidth=1)
-        
-        self.toolbar = tk.Menu(parent)
-        parent.config(menu = self.toolbar)
-
-        self.file_menu = tk.Menu(self.toolbar, tearoff="off")
-        self.toolbar.add_cascade(label="File", menu=self.file_menu)
-        self.file_menu.add_command(label="Import CSV")
-        self.file_menu.add_command(label="Open Job")
-        
-        self.top_bar_frame_1 = tk.Frame(self, height=24)
-        self.top_bar_frame_1.place(relheight=1, height=24)
-        
-        self.textbox = CustomText(self.frame)
-        self.textbox.place(relheight=1, relwidth=1, y=24, height=-24)
                 
      
 if __name__ == '__main__':
     root = tk.Tk()
 
+    test_frame = tk.Frame(root, bg="grey15")
+    test_frame.place(relheight=1, relwidth=1)
+    
     # Example usage
     def highlight_text(args):
-        text.highlight_pattern(r"\bhello\b")
-        text.highlight_pattern(r"\bworld\b", "match2")
         text.highlight_pattern(r"([\w\_\d\-\.]+)(?=\s*\=)", "variable_assignment")
         text.highlight_pattern(r"([\w\_\d\-\.]+)(?:\()", "function_call")
         text.highlight_pattern(r"\".*\"", "double_quotes")
@@ -106,8 +175,12 @@ if __name__ == '__main__':
         text.highlight_pattern(r"[\(\)]", "brackets")
         text.highlight_pattern(r"(^|\s+)(in|for|while|return|break|import)\s+", "loop_statement")
 
-    text = CustomText(root)
-    text.pack()
+    text = CustomText(test_frame)
+    text.place(relheight=1, relwidth=1, x=40, width=-40)
+    line_count = TextLineNumbers(test_frame)
+    line_count.attach(text)
+    line_count.place(relheight=1, width=40)
+    #text.pack(side="right", fill="both", expand=True)
 
     # This is not the best way, but it works.
     # instead, see: https://stackoverflow.com/a/40618152/14507110
