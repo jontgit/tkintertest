@@ -5,7 +5,7 @@ class Script():
         self.title = "Get Users"
         self.description = "Gets all users on a firewall and returns them"
         self.device = "Cisco ASA"
-        self.base_script = """users = send_command("show run | i username").split('\n')
+        self.base_script = """users = send_command("show run | i username").split('\\n')
 for user in users:
     print(user)
 """

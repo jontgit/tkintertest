@@ -4,7 +4,7 @@ from threading import Thread
 import time
 
 class WorkerThread(Thread):
-    def __init__(self, work_queue, complete_queue):
+    def __init__(self, work_queue, complete_queue, root):
         """
         Worker threads handle spinning up the actual remote-connection
         class in order to initiate a SSH/Telnet session and run commands.
@@ -32,6 +32,7 @@ class WorkerThread(Thread):
         self.daemon = True
         self.work_queue = work_queue
         self.complete_queue = complete_queue
+        self.root = root
 
     def run(self):
         """
@@ -45,8 +46,9 @@ class WorkerThread(Thread):
         while True:
             if not self.work_queue.empty():
                 job = self.work_queue.get()
-                remote_connection = RemoteConnection(job)
-                if remote_connection.status != 'running':
+                remote_connection = RemoteConnection(job, self.root)
+                if remote_connection.status not in ['connecting','connected','running']:
+                    f"Job Finished: {remote_connection.hostname}"
                     self.complete_queue.put({
                         "username" : remote_connection.username,
                         "hostname" : remote_connection.hostname,
@@ -55,4 +57,5 @@ class WorkerThread(Thread):
                         "return_data" : remote_connection.return_data
                         })
                     self.work_queue.task_done()
+
             time.sleep(0.1)

@@ -8,6 +8,11 @@ import importlib
 
 syntax = [
     {
+        "regex" : r"#.*",
+        "tag" : "comment",
+        "fg" : "green"
+    },
+    {
         "regex" : r"([\w\_\d\-\.]+)(?=\s*\=|\s+in)",
         "tag" : "variable_assignment",
         "fg" : "skyblue"
@@ -90,7 +95,7 @@ class Script():
             
         self.title = title
         parent.config(menu = self.toolbar)
-        parent.geometry("900x500")
+        parent.geometry("1200x700")
         self.root = root
 
         self.file_menu = tk.Menu(self.toolbar, tearoff="off")

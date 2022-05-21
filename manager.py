@@ -6,7 +6,7 @@ import time
 CONCURRENT_SSH_LIMIT = 5
 
 class ManagerThread(Thread):
-    def __init__(self, manager_queue, complete_queue):
+    def __init__(self, manager_queue, complete_queue, root):
         """
         Manager thread handles sending out jobs to all the worker
         threads and spins up the relevant amount of threads to run
@@ -22,7 +22,7 @@ class ManagerThread(Thread):
         self.work_queue = Queue(maxsize=CONCURRENT_SSH_LIMIT)
         self.worker_threads = []
         for i in range(CONCURRENT_SSH_LIMIT):
-            self.worker_threads.append(WorkerThread(self.work_queue, complete_queue).start())
+            self.worker_threads.append(WorkerThread(self.work_queue, complete_queue, root).start())
 
     def run(self):
         while True:

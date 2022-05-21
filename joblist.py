@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk
 import tkinter.font as font
 import re
 
@@ -12,17 +13,18 @@ class JobList(tk.Canvas):
         The main program is accessible via root, so primarily for changing the
         focus/selection via this window.
         """
-        super().__init__(parent, bg="#FFFFFF")
+        super().__init__(parent)
         self.root = root
+        
         self.parent = parent
-        self.scrollbar = tk.Scrollbar(parent, orient="vertical")
+        self.scrollbar = ttk.Scrollbar(parent, orient="vertical")
         self.scrollbar.pack(side="left", fill="y")
         self.config(yscrollcommand=self.scrollbar.set)
         self.scrollbar.config(command=self.yview)
         
         self.jobs = []
         self.selected_jobs = []
-        self.focus_frame = ".!frame.!joblist.!frame.!frame"
+        self.focus_frame = ".!frame2.!joblist.!frame.!frame"
         self.skip_select = True
                 
         self.frame = tk.Frame(self)
@@ -41,11 +43,11 @@ class JobList(tk.Canvas):
         self.bind("<MouseWheel>", self._on_mousewheel)
         self.bind('<Enter>', self._bound_to_mousewheel)
         self.bind('<Leave>', self._unbound_to_mousewheel)
-
-        self.selected_font = font.Font(family='Courier New', size=10,  weight="bold", slant="italic")
-        self.standard_font = font.Font(family='Courier New', size=10,  weight="normal")
         
         self.load_images()
+        
+        self.background_colour = "grey20"
+        self.foreground_colour = "grey90"
         
         parent.update()
         self.config(scrollregion=self.bbox("all"))
@@ -76,10 +78,11 @@ class JobList(tk.Canvas):
         the job list) that the frame reprisents, and then sends
         this in the return as an int.
         """
-        if str(frame) == ".!frame.!joblist.!frame.!frame":
+        if str(frame) == ".!frame2.!joblist.!frame.!frame":
             return 0
         else:
-            return int(re.search('(\d+)$', str(frame)).group())-1
+            search = re.search('(\d+)$', str(frame)).group()
+            return int(search)-1
 
     def update_job_status(self, row):
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
@@ -115,32 +118,43 @@ class JobList(tk.Canvas):
         if isinstance(frame, int):
             frame = self.jobs[frame][3]
         frame.configure(highlightbackground = f"{colour}", highlightcolor= f"{colour}", highlightthickness=1)
+        
+    def _set_row_font_colour(self, frame, colour):
+        """
+        Sets the border of the row to a specific colour.
+        Can handle the frame coming in as an int or the
+        directly referenced object.
+        """
+        if isinstance(frame, int):
+            frame = self.jobs[frame][3]
+        for cell in frame.children:
+            frame.children[cell].configure(fg=f"{colour}")
 
     def _set_row_disabled(self, row):
         """
         Sets the row in question into 'disabled' mode.
         If a job is not active, it cannot be run at all.
         """
-        self.jobs[row][0].configure(fg="#A1A1A1", bg="white")
-        self.jobs[row][1].configure(image=self.disabled_status_images[self.root.device_data[row]['status']], bg="white")
-        self.jobs[row][2].configure(fg="#A1A1A1", bg="white")
+        self.jobs[row][0].configure(fg="#A1A1A1", bg=self.background_colour)
+        self.jobs[row][1].configure(image=self.disabled_status_images[self.root.device_data[row]['status']], bg=self.background_colour)
+        self.jobs[row][2].configure(fg="#A1A1A1", bg=self.background_colour)
         if self.jobs[row][3] != self.focus_frame:
-            self._set_row_border(self.jobs[row][3], "white")
+            self._set_row_border(self.jobs[row][3], self.background_colour)
         else:
-            self._set_row_border(self.jobs[row][3], "black")
+            self._set_row_border(self.jobs[row][3], self.foreground_colour)
 
     def _set_row_enabled(self, row):
         """
         Sets the row in question into 'enabled' mode.
         If a job is not active, it cannot be run at all.
         """
-        self.jobs[row][0].configure(fg="black", bg="white")
-        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']], bg="white") 
-        self.jobs[row][2].configure(fg="black", bg="white")
+        self.jobs[row][0].configure(fg=self.foreground_colour, bg=self.background_colour)
+        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']], bg=self.background_colour) 
+        self.jobs[row][2].configure(fg=self.foreground_colour, bg=self.background_colour)
         if self.jobs[row][3] != self.focus_frame:
-            self._set_row_border(self.jobs[row][3], "white")
+            self._set_row_border(self.jobs[row][3], self.background_colour)
         else:
-            self._set_row_border(self.jobs[row][3], "black")
+            self._set_row_border(self.jobs[row][3], self.foreground_colour)
 
     def _focus_row(self, event):
         """
@@ -149,16 +163,20 @@ class JobList(tk.Canvas):
         
         """
         frame = self.jobs[self.highlight][3]
-    
-        if not str(frame.master) == self.focus_frame:
-            # Reset colour of old focus frame
+        if not str(frame) == self.focus_frame:
+            
             if self._get_row_index(self.focus_frame) in self.selected_jobs:
                 self._set_row_border(self.focus_frame, 'lightskyblue')
-            else:
-                self._set_row_border(self.focus_frame, 'white')
+                self._set_row_font_colour(frame, self.background_colour)
+                
+                            
+            else: # Reset colour of old focus frame
+                self._set_row_border(self.focus_frame, self.background_colour)
+                self._set_row_font_colour(frame, self.foreground_colour)
 
-            # Set colour of new foux
-            self._set_row_border(frame, 'black')
+            # Set colour of new focus
+            self._set_row_border(frame, "lightskyblue")
+            self._set_row_font_colour(frame, self.background_colour)
 
             self.focus_frame = frame
             self.root.change_focus(self._get_row_index(self.focus_frame))
@@ -219,9 +237,9 @@ class JobList(tk.Canvas):
                 self.selected_jobs.append(self.highlight)
                 
             else:
-                self._set_row_colour(frame, "white")
+                self._set_row_colour(frame, self.background_colour)
                 if not frame == self.focus_frame:
-                    self._set_row_border(frame, "white")
+                    self._set_row_border(frame, self.background_colour)
                 self.selected_jobs.remove(self.highlight)
 
     def _highlight_row(self, event):
@@ -240,6 +258,7 @@ class JobList(tk.Canvas):
         self.highlight = self._get_row_index(frame)
         if not self._get_row_index(frame) in self.selected_jobs:
             self._set_row_colour(frame, "lightblue")
+            self._set_row_font_colour(frame, self.background_colour)
             if not frame == self.focus_frame:
                 self._set_row_border(frame, "lightblue")
         else:
@@ -260,9 +279,14 @@ class JobList(tk.Canvas):
         self.highlight = -1
 
         if not self._get_row_index(frame) in self.selected_jobs:
-            self._set_row_colour(frame, "white")
+            self._set_row_colour(frame, self.background_colour)
             if not frame == self.focus_frame:
-                self._set_row_border(frame, "white")
+                self._set_row_border(frame, self.background_colour)
+                self._set_row_font_colour(frame, self.foreground_colour)
+            else:
+                self._set_row_border(frame, self.foreground_colour)
+                self._set_row_font_colour(frame, self.foreground_colour)
+                
         else:
             self._set_row_colour(frame, "lightskyblue")
                 
@@ -314,12 +338,11 @@ class JobList(tk.Canvas):
             
         finally:
             #if not self._get_row_index(frame) in self.selected_jobs:
-            #self._set_row_colour(self.right_clicked_frame, "white")
+            #self._set_row_colour(self.right_clicked_frame, self.background_colour)
             #if not self.right_clicked_frame == self.focus_frame:
-            #    self._set_row_border(frame, "white")
+            #    self._set_row_border(frame, self.background_colour)
             
             self.drop_down.grab_release()
-            print("MEMES")
 
     def _toggle_enabled(self):
         for job in self.selected_jobs:
@@ -343,7 +366,9 @@ class JobList(tk.Canvas):
             "unreachable" : tk.PhotoImage(file="./res/active/down.png"),
             "complete" : tk.PhotoImage(file="./res/active/ok.png"),
             "pending" : tk.PhotoImage(file="./res/active/pending.png"),
-            "auth error" : tk.PhotoImage(file="./res/active/auth.png")
+            "auth error" : tk.PhotoImage(file="./res/active/auth.png"),
+            "connecting" : tk.PhotoImage(file="./res/active/connect.png"),
+            "connected" : tk.PhotoImage(file="./res/active/connected.png")
         }
         self.disabled_status_images = {
             "paused" : tk.PhotoImage(file="./res/disabled/pause.png"),
@@ -360,7 +385,7 @@ class JobList(tk.Canvas):
         self.create_headers()
         for n, line in enumerate(data, 1):
             
-            line_frame = tk.Frame(self.frame, highlightbackground = "white", highlightcolor= "white", highlightthickness=1)#, relief="solid", bd=1)
+            line_frame = tk.Frame(self.frame, highlightbackground = self.background_colour, highlightcolor= self.background_colour, highlightthickness=1)#, relief="solid", bd=1)
             line_frame.grid(row=n, column=0, ipadx=3, columnspan=4, sticky="nesw")
             
             line_frame.bind("<Button-1>", self._focus_row)
@@ -377,25 +402,25 @@ class JobList(tk.Canvas):
             else:
                 hostname = line['hostname'].ljust(33)
             
-            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), borderwidth=1, relief="flat", bg="#FFFFFF")
+            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), borderwidth=1, relief="flat", bg=self.background_colour)
             if not line['active']:
                 hostname.configure(fg="#A1A1A1")
             hostname.grid(row=0, column=1, ipadx=3, sticky="nesw")
             
             if not line['active']:
-                status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']], borderwidth=1, relief="flat", bg="#FFFFFF")
+                status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']], borderwidth=1, relief="flat", bg=self.background_colour)
             else:
-                status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']], borderwidth=1, relief="flat", bg="#FFFFFF")
+                status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']], borderwidth=1, relief="flat", bg=self.background_colour)
                 
             status_icon.grid(row=0, column=3, ipadx=3, sticky="nesw")
             
-            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize(), anchor="w", borderwidth=1, relief="flat", bg="#FFFFFF")
+            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize(), anchor="w", borderwidth=1, relief="flat", bg=self.background_colour)
             if not line['active']:
                 status.configure(fg="#A1A1A1")
             status.grid(row=0, column=4, ipadx=3, sticky="nesw")
             
             if str(line_frame) == self.focus_frame:
-                self._set_row_border(line_frame, "black")
+                self._set_row_border(line_frame, self.foreground_colour)
                 self.focus_frame = line_frame
                          
             self.jobs.append((hostname, status_icon, status, line_frame))
@@ -412,8 +437,8 @@ class JobList(tk.Canvas):
         #self.check_all_button = ttk.Checkbutton(self.frame, command=self.check_all_rows)#, borderwidth=1, relief="raised")
         #self.check_all_button.grid(row=0, column=0, sticky="nesw")
         
-        self.hostname_header = tk.Label(self.frame, text="Hostname")#, borderwidth=1, relief="ridge")
+        self.hostname_header = tk.Label(self.frame, text="Hostname", background="grey15")#, borderwidth=1, relief="ridge")
         self.hostname_header.grid(row=0, column=1, sticky="nesw")
         
-        self.status_header = tk.Label(self.frame, text="Status")#, borderwidth=1, relief="ridge")
+        self.status_header = tk.Label(self.frame, text="Status", background="grey15")#, borderwidth=1, relief="ridge")
         self.status_header.grid(row=0, column=2, columnspan=2, sticky="nesw")

@@ -1,5 +1,7 @@
 # Old files not needed, just here for archive
 .old/
+# Don't upload jobs, but keep folder
+.jobs/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

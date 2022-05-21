@@ -10,7 +10,7 @@ class JobData(tk.Canvas):
     def __init__(self, parent, root):
         super().__init__(parent)
         self.root = root
-        self.frame = tk.Frame(self, relief="groove", bd=2)
+        self.frame = tk.Frame(self)#, relief="groove", bd=2)
         self.pack(side="left", fill="both", expand=True)
         
         self.selected_font = font.Font(family='Segoe UI', size=12,  weight="bold")
@@ -22,7 +22,7 @@ class JobData(tk.Canvas):
         self.job_data_title.place(relwidth=1)
         
         self.job_data_window = ttk.Notebook(self)
-        self.job_data_window.place(relwidth=1, relheight=1, y=29)
+        self.job_data_window.place(relwidth=1, relheight=1, y=25, height=-25)
 
         self.overview_tab = tk.Frame(self.job_data_window)
         self.job_data_window.add(self.overview_tab, text="Overview")
@@ -31,11 +31,11 @@ class JobData(tk.Canvas):
         self.job_data_window.add(self.session_log_tab, text="Session Logs")
         
         self.session_log_selection = ttk.Combobox(self.session_log_tab)
-        self.session_log_selection.place(relwidth=1, height=24)
+        self.session_log_selection.place(relwidth=1, height=35)
         self.session_log_selection.bind("<<ComboboxSelected>>", self.load_session_file)
 
         self.session_log = tk.Text(self.session_log_tab, relief=tk.FLAT, highlightthickness=1, highlightbackground="darkgrey")
-        self.session_log.place(relwidth=1, y=24, relheight=1, height=-25)
+        self.session_log.place(relwidth=1, y=35, relheight=1, height=-35)
         self.session_log.configure(state='disabled')
         
         self.selection_info = None
@@ -43,23 +43,13 @@ class JobData(tk.Canvas):
         Thread(target=self.session_log_updater, daemon=True).start()
 
     def session_log_updater(self):
-        REFRESH_NEEDED
         while True:
             if self.selection_info != None:
-                if self.selection_info['status'] not in ['pending', 'complete']:
+                if self.selection_info['status'] in ['running']:
                     self.refresh_session_logs()
                     self.session_log_selection.current(0)
                     self.load_session_file(0)
                     
-                if self.selection_info['status'] in ['auth error', 'program error'] and REFRESH_NEEDED: # single refresh
-                    print(REFRESH_NEEDED)
-                    self.refresh_session_logs()
-                    self.session_log_selection.current(0)
-                    self.load_session_file(0)
-                    REFRESH_NEEDED = False
-                
-                else:
-                    REFRESH_NEEDED = True
                     
             time.sleep(0.2)
 
@@ -80,7 +70,7 @@ class JobData(tk.Canvas):
             self.session_log.configure(state='normal')
             self.session_log.delete('1.0', 'end')
             self.session_log.configure(state='disable')
-            
+
         self.populate_overview()
         self.refresh_needed = False
 
@@ -92,6 +82,7 @@ class JobData(tk.Canvas):
             log = log_reader.read()
         self.session_log.insert("end", log)
         self.session_log.configure(state='disable')
+        self.session_log.see("end")
 
     def populate_overview(self):
         
@@ -114,7 +105,7 @@ class JobData(tk.Canvas):
         
 
         self.additional_data_frame = tk.Frame(self.overview_tab)
-        self.additional_data_frame.place(relheight=1, relwidth=1, y=50)
+        self.additional_data_frame.place(relheight=1, relwidth=1, height=-50, y=50)
         self.additional_data_text = tk.Text(self.additional_data_frame)
         self.additional_data_text.place(relheight=1, relwidth=1)
         self.additional_data_text.configure(state='disabled')
