@@ -10,6 +10,7 @@ from netmiko import (
     NetmikoAuthenticationException,
 )
 
+
 class RemoteConnection():
 
     def __init__(self, job, root):
@@ -55,6 +56,7 @@ class RemoteConnection():
             "username": self.username,
             "password": self.password,
             "secret": self.password,
+            "fast_cli" : False,
             "session_log": f"{self.folder}{self.current_time.strftime('%Y-%m-%d-%H-%M-%S')}---{self.hostname}.log",
         }
 
@@ -103,8 +105,11 @@ class RemoteConnection():
             if command in ['conf t', 'configure t', 'configure terminal']:
                 self.config = True
                 response = self.remote_connection.send_command(command, expect_string='.*#')#, read_timeout=10)
-            else:
 
+            elif 'copy' in command:
+                response = self.remote_connection.send_command(command, expect_string="bytes copied in|.*#", delay_factor=4)
+
+            else:
                 response = self.remote_connection.send_command(command)#, read_timeout=10)
 
 
@@ -115,9 +120,7 @@ class RemoteConnection():
         self.status = "running"
         self.update_gui()
         """
-        The selected script is parsed here.
-        
-        
+        The selected script is parsed here.        
         """
         
         self.return_data = self.script.run()

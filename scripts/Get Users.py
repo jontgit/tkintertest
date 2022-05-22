@@ -8,12 +8,28 @@ class Script():
         self.base_script = """users = send_command("show run | i username").split('\\n')
 for user in users:
     print(user)
+
+send_command("show int ip br")
+send_command("show int ip br")
+
+send_command("copy /noconfirm tftp://10.255.10.12/GitHubDesktopSetup-x64.exe disk0:/")
+
+
+
 """
 
     def run(self):
         users = self.remote_connection.send_command("show run | i username").split('\n')
         for user in users:
             print(user)
+        
+        self.remote_connection.send_command("show int ip br")
+        self.remote_connection.send_command("show int ip br")
+        
+        self.remote_connection.send_command("copy /noconfirm tftp://10.255.10.12/GitHubDesktopSetup-x64.exe disk0:/")
+        
+        
+        
         
 
 

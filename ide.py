@@ -8,11 +8,6 @@ import importlib
 
 syntax = [
     {
-        "regex" : r"#.*",
-        "tag" : "comment",
-        "fg" : "green"
-    },
-    {
         "regex" : r"([\w\_\d\-\.]+)(?=\s*\=|\s+in)",
         "tag" : "variable_assignment",
         "fg" : "skyblue"
@@ -61,12 +56,17 @@ syntax = [
         "regex" : r"\.",
         "tag" : "dot",
         "fg" : "white"
-    }
+    },
+    {
+        "regex" : r"#.*",
+        "tag" : "comment",
+        "fg" : "green"
+    },
 ]
 
 
 class Editor(tk.Frame):
-    def __init__(self, parent, root, title, text, script):
+    def __init__(self, parent, root, script):
         super().__init__(parent, bg="grey15")
         
         self.base_script = """
@@ -88,12 +88,12 @@ class Script():
         
         self.script = script
         self.toolbar = tk.Menu(self)
-        if title == "":
+        if self.script.title == "":
             parent.title("Untitled - Script Edtior")
         else:
-            parent.title(f"{title} - Script Edtior")
+            parent.title(f"{self.script.title} - Script Edtior")
             
-        self.title = title
+        self.title = self.script.title
         parent.config(menu = self.toolbar)
         parent.geometry("1200x700")
         self.root = root
@@ -118,7 +118,7 @@ class Script():
         self.edit_menu.add_separator()
         self.edit_menu.add_command(label="Find", command=self.find)
 
-        self.text = CustomText(self, text)
+        self.text = CustomText(self, self.script.base_script)
         self.text.place(relheight=1, relwidth=1, x=40, width=-40)
 
     def procress_script(self):
@@ -171,9 +171,6 @@ class Script():
             script_file.write(base_script)
             
         importlib.reload(self.root.scripts[self.script.title])
-        
-            
-        
 
     def save_as(self):
         pass
