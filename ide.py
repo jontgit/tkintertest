@@ -1,9 +1,12 @@
 import re
+from os import listdir
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 import shutil
 import importlib
+
+from entry import CustomEntry
 
 
 syntax = [
@@ -64,10 +67,41 @@ syntax = [
     },
 ]
 
+class DialogWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__()
+        self.title("Save Script as...")
+        self.iconbitmap("./res/main/save.ico")
+        self.resizable(False, False)
+        w = 150
+        h = 120
+        ws = self.winfo_screenwidth()
+        hs = self.winfo_screenheight()
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        self.geometry('%dx%d+%d+%d' % (w, h, x, y))
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=3)
+        
+        self.input_frame = tk.Frame(self)
+        self.input_frame.place(height=35, relwidth=1)
+        
+        self.title = tk.StringVar()
+        self.title_entry = CustomEntry(self.input_frame, self.title, "Title...", "")
+        self.title_entry.place(relwidth=1, relheight=1, x=2, y=2, width=-4, height=-4)
+        
+        self.save_button = ttk.Button(self, text="Save", command=self.save_as)
+        self.save_button.place(x=2, y=83, relwidth=1, height=35, width=-4)
+        
+    def save_as(self):
+        if f"{self.title}.py" not in listdir("./scripts"):
+            pass
+
 
 class Editor(tk.Frame):
     def __init__(self, parent, root, script):
         super().__init__(parent, bg="grey15")
+        parent.iconbitmap("./res/main/script.ico")
         
         self.base_script = """
 class Script():
@@ -173,37 +207,7 @@ class Script():
         importlib.reload(self.root.scripts[self.script.title])
 
     def save_as(self):
-        self.save_window = tk.Toplevel(self)
-        
-        w = 350
-        h = 250
-        ws = self.save_window.winfo_screenwidth()
-        hs = self.save_window.winfo_screenheight()
-        x = (ws/2) - (w/2)
-        y = (hs/2) - (h/2)
-        self.save_window.geometry('%dx%d+%d+%d' % (w, h, x, y))
-        self.save_window.columnconfigure(0, weight=1)
-        self.save_window.columnconfigure(1, weight=3)
-        
-        self.input_frame = tk.Frame(self.save_window)
-        self.input_frame.place(height=35, relwidth=1)
-        
-        ttk.Label(self.input_frame, text="Title: ").grid(column=0, row=0, sticky="w", padx=1, pady=1)
-        self.name_entry = ttk.Entry(self.input_frame).grid(column=1, row=0, sticky="e", padx=1, pady=1)
-        
-        
-        
-        self.desc_entry = tk.Text(self.save_window,
-                                   relief=tk.FLAT, 
-                                   highlightthickness=1, 
-                                   highlightbackground="grey90",
-                                   selectbackground="grey90", 
-                                   selectforeground="grey20")
-        self.desc_entry.place(y=35, x=5, width=-10, height=-75, relheight=1, relwidth=1)
-        self.desc_entry.insert("end", "Description...")
-        
-        self.save_button = ttk.Button(self.save_window, text="Save")
-        self.save_button.place(x=100, y=213, relwidth=1, width=-200, height=35)
+        self.save_window = DialogWindow()
         
 
     def exit(self):

@@ -30,16 +30,17 @@ class JobList(tk.Canvas):
         self.focus_index = 0
         self.highlight_index = -1
                 
-        self.frame = tk.Frame(self)
-        self.drop_down = tk.Menu(self.frame, tearoff=False)
-        self.drop_down.add_command(label="Disable", command=self._toggle_enabled)
-        self.drop_down.add_command(label="Reset")
-        self.drop_down.add_command(label="Run", command=self._run_jobs)
-        self.drop_down.add_command(label="Remove")
-        self.drop_down.add_separator()
-        self.drop_down.add_command(label="Edit")
-        self.drop_down.add_command(label="Clear Selection")
+        self._command_disable = False
+        self._command_reset = False
+        self._command_run_jobs = False
+        self._command_remove = False
+        self._command_edit = False
+        self._command_clear = False
+        self.empty_selection = True
         
+        self.frame = tk.Frame(self)
+        self.create_drop_down()
+
         self.pack(side="right", fill="both", expand=True)
         self.create_window(0, 0, window=self.frame, anchor='nw', width=382)
         
@@ -92,18 +93,23 @@ class JobList(tk.Canvas):
             },
             "disabled" : {
                 "fg" : "grey50",
-                "bg" : "grey20",
+                "bg" : "grey10",
                 "bd" : "grey20"
             },
             "disabled_focus" : {
                 "fg" : "grey50",
-                "bg" : "grey20",
-                "bd" : "grey20"
+                "bg" : "grey10",
+                "bd" : "grey90"
             },
             "disabled_highlight" : {
                 "fg" : "grey50",
-                "bg" : "grey20",
+                "bg" : "grey15",
                 "bd" : "grey20"
+            },
+            "disabled_highlight_focus" : {
+                "fg" : "grey50",
+                "bg" : "grey20",
+                "bd" : "grey90"
             },
         }
 
@@ -135,11 +141,23 @@ class JobList(tk.Canvas):
         the job list) that the frame reprisents, and then sends
         this in the return as an int.
         """
-        if str(frame) == ".!frame2.!joblist.!frame.!frame":
-            return 0
-        else:
-            search = re.search('(\d+)$', str(frame)).group()
-            return int(search)-1
+        search = re.search('(\d+)$', str(frame)).group()
+        return int(search)-1
+
+    def _set_command(self, command):
+        print(f"Set {command}")
+        if command == "disable":
+            self._command_disable = not self._command_disable
+        elif command == "reset":
+            self._command_reset = not self._command_reset
+        elif command == "run_jobs":
+            self._command_run_jobs = not self._command_run_jobs
+        elif command == "remove":
+            self._command_remove = not self._command_remove
+        elif command == "edit":
+            self._command_edit = not self._command_edit
+        elif command == "clear":
+            self._command_clear = not self._command_clear
 
     def update_job_status(self, row):
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
@@ -154,69 +172,100 @@ class JobList(tk.Canvas):
     ### ROW COLOUR/ATTRIBUTE FUNCTIONS
     ###
     
-    def _set_row_colour_(self, frame):
-        if isinstance(frame, int):
-            frame = self.jobs[frame][3]
+    def _set_row_colour_(self, frame_index):
+        """if isinstance(frame, int):
+            frame = self.jobs[frame][3]"""
             
         #print(f"Input: {self._get_row_index(frame)} | Focus: {self.focus_index} | Highlight {self.highlight_index} | Selection: {self.selected_jobs}")
         
         # Default (If none of the below apply)
         colour = self.colour_pallete['default']
-        
+
+        #print(frame_index, self.highlight_index)
+
         # Highlighted 
-        if self.highlight_index != -1 and \
-            frame == self.jobs[self.highlight_index][3]:
+        if frame_index == self.highlight_index:
+
             colour = self.colour_pallete['highlight']
+            #print("Highlight")
 
         # Selected
-        if self._get_row_index(frame) in self.selected_jobs:
-            colour = self.colour_pallete['selection']
+        if frame_index in self.selected_jobs:
 
-        # Selected & Highlighted
-        if self._get_row_index(frame) in self.selected_jobs and \
-            self.highlight_index != -1 and frame == self.jobs[self.highlight_index][3]:
-            colour = self.colour_pallete['selection_highlight']
+            colour = self.colour_pallete['selection']
+            #print("Selected")
 
         # Focused
-        if self._get_row_index(frame) == self.focus_index:
+        if frame_index == self.focus_index:
+
             colour = self.colour_pallete['focus']
-            
+            #print("Focused")
+
+        # Selected & Highlighted
+        if frame_index in self.selected_jobs and \
+            self.highlight_index != -1 and \
+            frame_index == self.highlight_index:
+
+            colour = self.colour_pallete['selection_highlight']
+            #print("Selected & Highlighted")
+
         # Focused & Highlighted
-        if self._get_row_index(frame) == self.focus_index and \
-            self._get_row_index(frame) == self.highlight_index:
+        if frame_index == self.focus_index and \
+            frame_index == self.highlight_index:
+
             colour = self.colour_pallete['focus_highlight']
+            #print("Focused & Highlighted")
             
         # Focused & Selected
-        if self._get_row_index(frame) == self.focus_index and \
-            self._get_row_index(frame) in self.selected_jobs:
+        if frame_index == self.focus_index and \
+            frame_index in self.selected_jobs:
+
             colour = self.colour_pallete['focus_selection']
+            #print("Focused & Selected")
             
         # Focused & Selected & Highlighted
-        if self._get_row_index(frame) == self.focus_index and \
-            self._get_row_index(frame) in self.selected_jobs and \
-            self.highlight_index != -1 and frame == self.jobs[self.highlight_index][3]:
+        if frame_index == self.focus_index and \
+            frame_index in self.selected_jobs and \
+            self.highlight_index != -1 and \
+            frame_index == frame_index:
+
             colour = self.colour_pallete['focus_highlight_selection']
+            #print("Focused & Selected & Highlighted")
             
         # Disabled
-        if not self.root.device_data[self._get_row_index(frame)]['active']:
+        if not self.root.device_data[frame_index]['active']:
+
             colour = self.colour_pallete['disabled']
+            #print("Disabled")
             
         # Disabled & Focused
-        if not self.root.device_data[self._get_row_index(frame)]['active'] and \
-            self._get_row_index(frame) == self.focus_index:
+        if not self.root.device_data[frame_index]['active'] and \
+            frame_index == self.focus_index:
+
             colour = self.colour_pallete['disabled_focus']
+            #print("Disabled & Focused")
             
         # Disabled & Highlighted
-        if not self.root.device_data[self._get_row_index(frame)]['active'] and \
-            self._get_row_index(frame) == self.highlight_index:
+        if not self.root.device_data[frame_index]['active'] and \
+            frame_index == self.highlight_index:
+
             colour = self.colour_pallete['disabled_highlight']
+            #print("Disabled & Highlighted")
             
+        # Disabled & Highlighted & Focused
+        if not self.root.device_data[frame_index]['active'] and \
+            frame_index == self.highlight_index and \
+            frame_index == self.focus_index:
+
+            colour = self.colour_pallete['disabled_highlight_focus']
+            #print("Disabled & Highlighted & Focused")
             
-        for cell in frame.children:
-            frame.children[cell].configure(bg=colour['bg'])
-            frame.children[cell].configure(fg=colour['fg'])
+
+        for cell in self.jobs[frame_index][3].winfo_children():
+            cell.configure(bg=colour['bg'])
+            cell.configure(fg=colour['fg'])
             
-        frame.configure(highlightbackground=colour['bd'], highlightcolor=colour['bd'], highlightthickness=1)
+        self.jobs[frame_index][3].configure(highlightbackground=colour['bd'], highlightcolor=colour['bd'], highlightthickness=1)
     
     def _set_row_disabled(self, row):
         """
@@ -225,7 +274,7 @@ class JobList(tk.Canvas):
         """
         frame = self.jobs[row]
         frame[1].configure(image=self.disabled_status_images[self.root.device_data[row]['status']])
-        self._set_row_colour_(frame[3])
+        self._set_row_colour_(row)
 
     def _set_row_enabled(self, row):
         """
@@ -234,7 +283,7 @@ class JobList(tk.Canvas):
         """
         frame = self.jobs[row]
         frame[1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
-        self._set_row_colour_(frame[3])
+        self._set_row_colour_(row)
 
     ###
     ### ROW SELECTION FUNCTIONS
@@ -246,14 +295,16 @@ class JobList(tk.Canvas):
         data displayed on the right of the screen.
         
         """
-        old_frame = self.focus_frame
+        old_frame_index = self.focus_index
         frame = self.jobs[self.highlight_index][3]
         if not str(frame) == self.focus_frame:
             self.focus_frame = frame
-            self.focus_index = self._get_row_index(frame)
+
+            self.focus_index = self.highlight_index
             self.root.change_focus(self.focus_index)
-            self._set_row_colour_(old_frame)
-            self._set_row_colour_(self.focus_frame)
+
+            self._set_row_colour_(old_frame_index)
+            self._set_row_colour_(self.focus_index)
 
     def _shift_select_row(self, event):
         """
@@ -284,7 +335,8 @@ class JobList(tk.Canvas):
                 if row not in self.selected_jobs:
                     self.selected_jobs.append(row)
                 
-                self._set_row_colour_(frame)
+                self._set_row_colour_(row)
+            self.empty_selection = False
     
     def _select_row(self, event):
         """
@@ -308,7 +360,8 @@ class JobList(tk.Canvas):
             else:
                 self.selected_jobs.remove(self.highlight_index)
             
-            self._set_row_colour_(frame)
+            self._set_row_colour_(self.highlight_index)
+        self.empty_selection = False
 
     def _highlight_row(self, event):
         """
@@ -321,10 +374,11 @@ class JobList(tk.Canvas):
         self.bind_all("<Control-Button-1>", self._select_row)
         self.bind_all("<Shift-Button-1>", self._shift_select_row)
         self.bind_all("<Button-3>", self._job_menu)
-        
-        frame = event.widget
-        self.highlight_index = self._get_row_index(frame)
-        self._set_row_colour_(frame)
+
+        old_highlight = self.highlight_index
+        self.highlight_index = self._get_row_index(event.widget)
+        self._set_row_colour_(old_highlight)
+        self._set_row_colour_(self.highlight_index)
     
     def _unhighlight_row(self, event):
         """
@@ -337,18 +391,11 @@ class JobList(tk.Canvas):
         self.unbind_all("<Control-Button-1>")
         self.unbind_all("<Shift-Button-1>")
         self.unbind_all("<Button-3>")
-        frame = event.widget
-        self.highlight_index = -1
-        
-        self._set_row_colour_(frame)
-                
-        if self.root.device_data[self._get_row_index(frame)]['status'] == "disabled":
-            self._set_row_colour(frame, "#A1A1A1")
-            self._set_row_border(frame, "#A1A1A1")
-     
+
     ###
     ### RIGHT CLICK MENU FUNCTIONS
     ###
+
     def _clear_job_selection(self):
         ran_jobs = self.selected_jobs
         self.selected_jobs = []
@@ -356,7 +403,7 @@ class JobList(tk.Canvas):
             self._set_row_colour_(job)
         
     def _run_jobs(self):
-        print(self.selected_jobs)
+        print("RUNNING: ",self.selected_jobs)
         self.root.put_job_in_queue(self.selected_jobs)
         self._clear_job_selection()
         
@@ -366,17 +413,18 @@ class JobList(tk.Canvas):
         Some work needs to be done with this.
         
         """
+
+        #print(f"RIGHT - {self.empty_selection} - {self.selected_jobs} ")
         
-        empty_selection = True if len(self.selected_jobs) == 0 else False
+        self.empty_selection = True if len(self.selected_jobs) == 0 else False
         try:
             frame = event.widget.master
-            self.right_clicked_frame = self.highlight_index
-            if str(frame) == ".!frame.!joblist.!frame":
+            if str(frame) == ".!frame2.!joblist.!frame":
                 self.skip_select = not self.skip_select
                 
-            if str(frame) != ".!frame.!joblist.!frame" or self.skip_select:
+            if str(frame) != ".!frame2.!joblist.!frame" or self.skip_select:
 
-                if empty_selection:
+                if self.empty_selection:
                     if self.highlight_index not in self.selected_jobs:
                         self._select_row(event)
                 
@@ -393,20 +441,45 @@ class JobList(tk.Canvas):
 
                 self.drop_down.entryconfigure(0, label=enable_disable_label)
                 
-                if len(self.selected_jobs) > 0:
-                    self.drop_down.entryconfigure(1, label=f"({len(self.selected_jobs)}) Reset")
-                    self.drop_down.entryconfigure(2, label=f"({len(self.selected_jobs)}) Run")
-                    self.drop_down.entryconfigure(3, label=f"({len(self.selected_jobs)}) Remove")
+                #if len(self.selected_jobs) > 0:
+                #    self.drop_down.entryconfigure(1, label=f"({len(self.selected_jobs)}) Reset")
+                #    self.drop_down.entryconfigure(2, label=f"({len(self.selected_jobs)}) Run")
+                #    self.drop_down.entryconfigure(3, label=f"({len(self.selected_jobs)}) Remove")
                     
-                
                 self.drop_down.tk_popup(event.x_root, event.y_root)
             
         finally:
-            
+
             self.drop_down.grab_release()
-            if empty_selection:
-                print(self.selected_jobs)
-                self._clear_job_selection()
+            """print("ASDADADADd")
+
+            
+            if self._command_disable:
+                pass
+                self._set_command("disable")
+
+            elif self._command_reset:
+                pass
+                self._set_command("reset")
+
+            elif self._command_run_jobs:
+                self._run_jobs()
+                self._set_command("run_jobs")
+
+            elif self._command_remove:
+                pass
+                self._set_command("remove")
+
+            elif self._command_edit:
+                pass
+                self._set_command("edit")
+
+            elif self._command_clear:
+                pass
+                self._set_command("clear")
+
+            """
+
 
     def _toggle_enabled(self):
         for job in self.selected_jobs:
@@ -421,6 +494,22 @@ class JobList(tk.Canvas):
     ###
     ### DATA LOAD FUNCTIONS
     ###
+
+    def create_drop_down(self):
+        self.drop_down = tk.Menu(self.frame, tearoff=False)
+        self.drop_down.add_command(label="Disable", command=self._set_command("disable"))
+        self.drop_down.add_command(label="Reset", command=self._set_command("reset"))
+        self.drop_down.add_command(label="Run", command=self._run_jobs)#self._set_command("run_jobs"))
+        self.drop_down.add_command(label="Remove", command=self._set_command("remove"))
+        self.drop_down.add_separator()
+        self.drop_down.add_command(label="Edit", command=self._set_command("edit"))
+        self.drop_down.add_command(label="Clear Selection", command=self._set_command("clear"))
+
+    def clear_frame(self):
+        self.frame.pack_forget()
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        self.create_drop_down()
 
     def load_images(self):
 
@@ -449,10 +538,11 @@ class JobList(tk.Canvas):
         }
 
     def load_data(self, data):
+        self.clear_frame()
         self.create_headers()
         for n, line in enumerate(data, 1):
             
-            line_frame = tk.Frame(self.frame)#, highlightbackground = self.background_colour, highlightcolor= self.background_colour, highlightthickness=1)#, relief="solid", bd=1)
+            line_frame = tk.Frame(self.frame, name=f"!frame{n}")#, highlightbackground = self.background_colour, highlightcolor= self.background_colour, highlightthickness=1)#, relief="solid", bd=1)
             line_frame.grid(row=n, column=0, ipadx=3, columnspan=4, sticky="nesw")
             
             line_frame.bind("<Button-1>", self._focus_row)
@@ -491,7 +581,7 @@ class JobList(tk.Canvas):
                 self.focus_frame = line_frame
                          
             self.jobs.append((hostname, status_icon, status, line_frame))
-            self._set_row_colour_(line_frame)
+            self._set_row_colour_(n - 1)
     
         self.parent.update()
         self.config(scrollregion=self.bbox("all"))

@@ -17,6 +17,7 @@ from manager import ManagerThread
 from namespace_lookup import NamespaceLookup
 from jobdata import JobData
 from joblist import JobList
+from entry import CustomEntry
 
 class Application(tk.Tk):
 
@@ -36,8 +37,8 @@ class Application(tk.Tk):
         self.selection_index = 0
         self.darkmode = True
         
-        self.title("Cisco Remote Access Program")
-        #self.iconbitmap("./res/ssh_icon.ico")
+        self.title("mHOSE")#"Multi Host Orchistrated Session Environment")
+        self.iconbitmap("./res/main/icon.ico")
         self.geometry("1200x700")
 
         self._load_scripts()
@@ -63,8 +64,8 @@ class Application(tk.Tk):
         self.toolbar.place(x=0, y=0, relwidth=1, height=self.button_height)
 
         self.file_menu = tk.Menu(self.toolbar, tearoff="off")
-        self.file_menu.add_command(label="Import CSV", command=self.import_csv)
-        self.file_menu.add_command(label="Open Job", command=self.import_csv)
+        self.file_menu.add_command(label="Import CSV", command=self.request_file)
+        self.file_menu.add_command(label="Open Job", command=self.request_file)
         self.file_menu_button = ttk.Menubutton(
             self.toolbar, text="File", menu=self.file_menu, direction="below"
         )
@@ -83,6 +84,20 @@ class Application(tk.Tk):
             self.toolbar, text="Scripts", menu=self.scripts_menu, direction="below"
         )
         self.scripts_menu_button.grid(row=0, column=1, padx=1)
+        
+        # Settings Menu
+        
+        self.settings_menu = tk.Menu(self.toolbar, tearoff="off")
+        self.settings_menu.add_command(label="Create New", command=self.editor_new_file)
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
+        self.settings_menu.add_command(label="Edit", command=self.editor_edit_file)
+        self.settings_menu.add_separator()
+        self.settings_menu.add_command(label="Delete", command=self.delete_script)
+        self.settings_menu_button = ttk.Menubutton(
+            self.toolbar, text="Scripts", menu=self.scripts_menu, direction="below"
+        )
+        self.scripts_menu_button.grid(row=0, column=2, padx=1)
         
         ###
         ### Tree/Job View (Left side) config
@@ -104,14 +119,17 @@ class Application(tk.Tk):
 
         self.top_bar_frame_1 = tk.Frame(self, height=24)
         # Username
-        tk.Label(self.top_bar_frame_1, text=" Username:").grid(row=0, column=0)
+        #tk.Label(self.top_bar_frame_1, text=" Username:").grid(row=0, column=0)
         self.username = tk.StringVar()
-        self.username_entry = ttk.Entry(self.top_bar_frame_1, width=20, textvariable=self.username).grid(row=0, column=1)
+        self.username_entry = CustomEntry(self.top_bar_frame_1, self.username, "Username...", "")
+        self.username_entry.grid(row=0, column=0, padx=1)
         
         # Password
-        tk.Label(self.top_bar_frame_1, text="   Password:" ).grid(row=0, column=2)
+        #tk.Label(self.top_bar_frame_1, text="   Password:" ).grid(row=0, column=2)
         self.password = tk.StringVar()
-        self.password_entry = ttk.Entry(self.top_bar_frame_1, width=20, textvariable=self.password, show="*").grid(row=0, column=3)
+        self.password_entry = CustomEntry(self.top_bar_frame_1, self.password, "Password...", "*")
+        self.password_entry.grid(row=0, column=1, padx=1)
+        #self.password_entry = ttk.Entry(self.top_bar_frame_1, width=20, textvariable=self.password, show="*").grid(row=0, column=3)
         
         # Job count
         tk.Label(self.top_bar_frame_1, text="   Count:").grid(row=0, column=4)
@@ -162,13 +180,13 @@ class Application(tk.Tk):
         self.status_title.grid(row=0, column=0)
 
         self.top_bar_frame_1.place(x=0, y=self.button_height, relwidth=1)
-        self.top_bar_frame_2.place(x=0, y=self.button_height*2, relwidth=1)
-        self.job_list_frame.place(x=0, y=self.button_height*3, relheight=1, height=-self.button_height*4-10, width=400)
-        self.job_data_frame.place(x=400, y=self.button_height*3, relheight=1, height=-self.button_height*4-10, relwidth=1, width=-400)
+        self.top_bar_frame_2.place(x=2, y=self.button_height*2, relwidth=1)
+        self.job_list_frame.place(x=0, y=self.button_height*3, relheight=1, height=-self.button_height*3-25, width=400)
+        self.job_data_frame.place(x=400, y=self.button_height*3, relheight=1, height=-self.button_height*3-25, relwidth=1, width=-402)
         self.status_bar_frame.pack(side="bottom", fill="x")
 
         if self.debug:
-            self.import_csv()
+            self.request_file("test_firewalls.csv")
         
     ###
     ### General GUI Update functions
@@ -299,7 +317,12 @@ class Application(tk.Tk):
     ### File/Job Load functions
     ###
 
-    def import_csv(self):
+    def request_file(self, filename=None):
+        if filename == None:
+            filename = fd.askopenfilename()
+        self.import_csv(filename)
+
+    def import_csv(self, filepath):
         """
         Creates a new job in the jobs folder, if a name
         has not been specified, just uses the name job_n
@@ -321,19 +344,16 @@ class Application(tk.Tk):
             `---script.py
     
         """
-
-        if not self.debug:
-            self.set_program_status("Loading Data...")
-            filename = fd.askopenfilename()
-        else:
-            filename = "test.csv"
+        filename = filepath.split("/")[-1]
+        print(filename)
+        self.lookup_queue.empty()
 
         if filename[-3:] == 'csv':
             self.device_data = []
 
             #self.create_job(filename)
 
-            with open(filename, 'r') as csv_file:
+            with open(filepath, 'r') as csv_file:
 
                 input_data = csv.DictReader(csv_file)
                 
