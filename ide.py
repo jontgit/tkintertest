@@ -173,7 +173,38 @@ class Script():
         importlib.reload(self.root.scripts[self.script.title])
 
     def save_as(self):
-        pass
+        self.save_window = tk.Toplevel(self)
+        
+        w = 350
+        h = 250
+        ws = self.save_window.winfo_screenwidth()
+        hs = self.save_window.winfo_screenheight()
+        x = (ws/2) - (w/2)
+        y = (hs/2) - (h/2)
+        self.save_window.geometry('%dx%d+%d+%d' % (w, h, x, y))
+        self.save_window.columnconfigure(0, weight=1)
+        self.save_window.columnconfigure(1, weight=3)
+        
+        self.input_frame = tk.Frame(self.save_window)
+        self.input_frame.place(height=35, relwidth=1)
+        
+        ttk.Label(self.input_frame, text="Title: ").grid(column=0, row=0, sticky="w", padx=1, pady=1)
+        self.name_entry = ttk.Entry(self.input_frame).grid(column=1, row=0, sticky="e", padx=1, pady=1)
+        
+        
+        
+        self.desc_entry = tk.Text(self.save_window,
+                                   relief=tk.FLAT, 
+                                   highlightthickness=1, 
+                                   highlightbackground="grey90",
+                                   selectbackground="grey90", 
+                                   selectforeground="grey20")
+        self.desc_entry.place(y=35, x=5, width=-10, height=-75, relheight=1, relwidth=1)
+        self.desc_entry.insert("end", "Description...")
+        
+        self.save_button = ttk.Button(self.save_window, text="Save")
+        self.save_button.place(x=100, y=213, relwidth=1, width=-200, height=35)
+        
 
     def exit(self):
         pass

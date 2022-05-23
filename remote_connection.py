@@ -10,7 +10,6 @@ from netmiko import (
     NetmikoAuthenticationException,
 )
 
-
 class RemoteConnection():
 
     def __init__(self, job, root):

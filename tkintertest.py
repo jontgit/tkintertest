@@ -28,10 +28,8 @@ class Application(tk.Tk):
         """
         
         super().__init__()
-        self.tk.call("source", "./res/theme/azure/azure.tcl")
+        self.tk.call("source", "./res/theme/azure.tcl")
         self.button_height = 35
-        
-        #self.tk.call("source", "./res/theme/sun-valley/sun-valley.tcl")
         self.tk.call("set_theme", "dark")
 
         self.debug = True
@@ -41,8 +39,6 @@ class Application(tk.Tk):
         self.title("Cisco Remote Access Program")
         #self.iconbitmap("./res/ssh_icon.ico")
         self.geometry("1200x700")
-
-
 
         self._load_scripts()
 
