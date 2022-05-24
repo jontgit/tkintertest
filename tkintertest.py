@@ -11,6 +11,7 @@ import shutil
 from threading import Thread
 from queue import Queue
 from os import listdir
+from turtle import bgcolor
 
 from ide import Editor
 from manager import ManagerThread
@@ -18,6 +19,18 @@ from namespace_lookup import NamespaceLookup
 from jobdata import JobData
 from joblist import JobList
 from entry import CustomEntry
+from option_menu import CustomOptionMenu
+
+#
+# DONE - DUPLICATE ENTRIES 
+# DONE - FILE HANDLING 
+# DONE - UNREACHABLE CHECK - Set disabled
+# Export Results/Job Status (Save Job)
+# Sort by status
+# Custom Status
+# 
+# 
+
 
 class Application(tk.Tk):
 
@@ -43,16 +56,22 @@ class Application(tk.Tk):
 
         self._load_scripts()
 
+        self.style = ttk.Style()
+
         ###
         ### Scart daemon threads
         ###
 
         self.manager_queue = Queue()
         self.complete_queue = Queue()
-        self.manager_thread = ManagerThread(self.manager_queue, self.complete_queue, self).start()
-        self.completed_job_thread = Thread(target=self.get_complete_job, daemon=True).start()
+        self.manager_thread = ManagerThread(self.manager_queue, self.complete_queue, self)
+        self.completed_job_thread = Thread(target=self.get_complete_job, daemon=True)
+        self.manager_thread.start()
+        self.completed_job_thread.start()
+
         self.lookup_queue = Queue()
-        self.namespace_lookup = NamespaceLookup(self, self.lookup_queue).start()
+        self.namespace_lookup = NamespaceLookup(self, self.lookup_queue)
+        self.namespace_lookup.start()
 
         ###
         ### Menu Bar config
@@ -60,7 +79,24 @@ class Application(tk.Tk):
 
         # File Menu
 
-        self.toolbar = tk.Frame(self, bg="grey20")
+
+        self.toolbar = tk.Menu(self)
+        self.config(menu = self.toolbar)
+
+        self.file_menu = tk.Menu(self.toolbar, tearoff="off")
+        self.toolbar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label="Import CSV", command=self.request_file)
+        self.file_menu.add_command(label="Open Job", command=self.request_file)
+
+        self.scripts_menu = tk.Menu(self.toolbar, tearoff="off")
+        self.toolbar.add_cascade(label="Scripts", menu=self.scripts_menu)
+        self.scripts_menu.add_command(label="Create New", command=self.editor_new_file)
+        self.scripts_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
+        self.scripts_menu.add_command(label="Edit", command=self.editor_edit_file)
+        self.scripts_menu.add_command(label="Delete", command=self.delete_script)
+
+
+        """self.toolbar = tk.Frame(self, bg="grey20")
         self.toolbar.place(x=0, y=0, relwidth=1, height=self.button_height)
 
         self.file_menu = tk.Menu(self.toolbar, tearoff="off")
@@ -97,7 +133,7 @@ class Application(tk.Tk):
         self.settings_menu_button = ttk.Menubutton(
             self.toolbar, text="Scripts", menu=self.scripts_menu, direction="below"
         )
-        self.scripts_menu_button.grid(row=0, column=2, padx=1)
+        self.scripts_menu_button.grid(row=0, column=2, padx=1)"""
         
         ###
         ### Tree/Job View (Left side) config
@@ -117,37 +153,64 @@ class Application(tk.Tk):
         ### Top bar frame - input bar
         ###
 
-        self.top_bar_frame_1 = tk.Frame(self, height=24)
+        self.top_bar_frame_1 = tk.Frame(self)
+
+        self.top_bar_frame_1_left = tk.Frame(self.top_bar_frame_1)
+        #self.top_bar_frame_1_left.grid(row=0, column=0)
+        self.top_bar_frame_1_left.place(y=0, x=0, height=35)
+
+
+        self.top_bar_frame_1_right = tk.Frame(self.top_bar_frame_1)
+        #self.top_bar_frame_1_right.grid(row=0, column=1)
+        self.top_bar_frame_1_right.place(y=0, x=580, height=35)
+
+
         # Username
-        #tk.Label(self.top_bar_frame_1, text=" Username:").grid(row=0, column=0)
         self.username = tk.StringVar()
-        self.username_entry = CustomEntry(self.top_bar_frame_1, self.username, "Username...", "")
+        self.username_entry = CustomEntry(self.top_bar_frame_1_left, self.username, "Username...", "")
         self.username_entry.grid(row=0, column=0, padx=1)
         
         # Password
-        #tk.Label(self.top_bar_frame_1, text="   Password:" ).grid(row=0, column=2)
         self.password = tk.StringVar()
-        self.password_entry = CustomEntry(self.top_bar_frame_1, self.password, "Password...", "*")
+        self.password_entry = CustomEntry(self.top_bar_frame_1_left, self.password, "Password...", "*")
         self.password_entry.grid(row=0, column=1, padx=1)
         #self.password_entry = ttk.Entry(self.top_bar_frame_1, width=20, textvariable=self.password, show="*").grid(row=0, column=3)
-        
+
+        # Enable Password
+
+        self.enable_password_bool = tk.IntVar()
+        self.enable_password_bool.set(0)
+        self.enable_password = tk.StringVar()
+        self.enable_password_entry = CustomEntry(self.top_bar_frame_1_left, self.enable_password, "Enable...", "*")
+        self.enable_password_entry.grid(row=0, column=2, padx=1)
+        self.enable_password_entry.grid_remove()
+        self.enable_pass = ttk.Checkbutton(
+                    self.top_bar_frame_1_left, variable=self.enable_password_bool,
+                    command=self.enable_entry,
+                    onvalue = 1, offvalue = 0,
+                    text="Enable", style="Switch.TCheckbutton"
+                )
+        self.enable_pass.grid(row=0, column=3, padx=1)
+
+
         # Job count
-        tk.Label(self.top_bar_frame_1, text="   Count:").grid(row=0, column=4)
-        self.job_count_entry = ttk.Entry(self.top_bar_frame_1, width=5).grid(row=0, column=5)
+        #tk.Label(self.top_bar_frame_1, text="   Count:").grid(row=0, column=4)
+        #self.job_count_entry = ttk.Entry(self.top_bar_frame_1, width=5).grid(row=0, column=5)
         
         # Job Selection
-        tk.Label(self.top_bar_frame_1, text="   Script:").grid(row=0, column=6)
+        tk.Label(self.top_bar_frame_1_right, text="   Script:").grid(row=0, column=6)
 
         self.script_list = [ script for script in self.scripts.keys() ]
-        self.script_select = ttk.Combobox(self.top_bar_frame_1, state="readonly", values=self.script_list )
-        self.script_select.bind("<<ComboboxSelected>>",lambda e: self.top_bar_frame_1.focus())
+        self.script_var = tk.StringVar(value="Script...")
+        #self.script_select = ttk.OptionMenu(self.top_bar_frame_1_right, self.script_var, *self.script_list )
+        self.script_select = ttk.Combobox(self.top_bar_frame_1_right, state="readonly", values=self.script_list )
         self.script_select.current(0)
-        self.script_select.grid(row=0, column=7, sticky="ew")
+        self.script_select.grid(row=0, column=7, sticky="nsew")
 
         # Job Selection
-        tk.Label(self.top_bar_frame_1, text="   Mode:").grid(row=0, column=8)
-        self.connection_mode = ttk.Combobox(self.top_bar_frame_1, state="readonly", values=["SSH", "Telnet"] )
-        self.connection_mode.bind("<<ComboboxSelected>>",lambda e: self.top_bar_frame_1.focus())
+        tk.Label(self.top_bar_frame_1_right, text="   Mode:").grid(row=0, column=8)
+        self.connection_mode = ttk.Combobox(self.top_bar_frame_1_right, state="readonly", values=["SSH", "Telnet"] )
+        #self.connection_mode.bind("<<ComboboxSelected>>",lambda e: self.top_bar_frame_1.focus())
         self.connection_mode.current(0)
         self.connection_mode.grid(row=0, column=9)
 
@@ -156,18 +219,35 @@ class Application(tk.Tk):
         ###
 
         self.top_bar_frame_2 = tk.Frame(self, height=24)
+        self.top_bar_frame_2.columnconfigure(0, weight=1)
+        self.top_bar_frame_2.columnconfigure(1, weight=1)
+        self.top_bar_frame_2.columnconfigure(2, weight=1)
+        self.top_bar_frame_2.columnconfigure(3, weight=1)
+        #self.top_bar_frame_2.columnconfigure(4, weight=1)
+
+
         # Darkmode button
         #self.lightmode_icon = tk.PhotoImage(file = r"./res/main/sun.png")
         #self.darkmode_button = ttk.Button(self.top_bar_frame_2, image=self.lightmode_icon, command=self.toggle_darkmode).grid(row=1, column=0, padx=1)
-        # Play button
-        self.play_icon = tk.PhotoImage(file = r"./res/play-16.png")
-        self.play_button = ttk.Button(self.top_bar_frame_2, image=self.play_icon).grid(row=1, column=1, padx=1)
+        # Export button
+        self.export_icon = tk.PhotoImage(file = r"./res/main/download_w.png")
+        self.export_button = ttk.Button(self.top_bar_frame_2, image=self.export_icon)
+        self.export_button.grid(row=1, column=0, padx=1, sticky="nsew")
+
+        # Run button
+        self.run_icon = tk.PhotoImage(file = r"./res/main/run_w.png")
+        self.run_button = ttk.Button(self.top_bar_frame_2, image=self.run_icon)
+        self.run_button.grid(row=1, column=1, padx=1, sticky="nsew")
+
+        # Run All button
+        self.run_all_icon = tk.PhotoImage(file = r"./res/main/run_all_w.png")
+        self.run_all_button = ttk.Button(self.top_bar_frame_2, image=self.run_all_icon)
+        self.run_all_button.grid(row=1, column=2, padx=1, sticky="nsew")
+
         # Pause button
-        self.pause_icon = tk.PhotoImage(file = r"./res/pause-16.png")
-        self.pause_button = ttk.Button(self.top_bar_frame_2, image=self.pause_icon).grid(row=1, column=2, padx=1)
-        # Pause button
-        self.stop_icon = tk.PhotoImage(file = r"./res/stop-16.png")
-        self.stop_button = ttk.Button(self.top_bar_frame_2, image=self.stop_icon).grid(row=1, column=3, padx=1)
+        self.pause_icon = tk.PhotoImage(file = r"./res/main/pause_w.png")
+        self.pause_button = ttk.Button(self.top_bar_frame_2, image=self.pause_icon)
+        self.pause_button.grid(row=1, column=3, padx=1, sticky="nsew")
 
         ###
         ### Status bar (Bottom)
@@ -179,19 +259,26 @@ class Application(tk.Tk):
         self.status_title = ttk.Label(self.status_bar_frame, textvariable=self.status, foreground="grey90")
         self.status_title.grid(row=0, column=0)
 
-        self.top_bar_frame_1.place(x=0, y=self.button_height, relwidth=1)
-        self.top_bar_frame_2.place(x=2, y=self.button_height*2, relwidth=1)
-        self.job_list_frame.place(x=0, y=self.button_height*3, relheight=1, height=-self.button_height*3-25, width=400)
-        self.job_data_frame.place(x=400, y=self.button_height*3, relheight=1, height=-self.button_height*3-25, relwidth=1, width=-402)
+        self.top_bar_frame_1.place(x=4, y=2, relwidth=1, width=-4, height=35)
+        self.top_bar_frame_2.place(x=4, y=self.button_height+2, width=396)
+        self.job_list_frame.place(x=0, y=(self.button_height*2)+2, relheight=1, height=-self.button_height*2-25, width=400)
+        self.job_data_frame.place(x=400, y=(self.button_height*2)+2, relheight=1, height=-self.button_height*2-25, relwidth=1, width=-402)
         self.status_bar_frame.pack(side="bottom", fill="x")
 
         if self.debug:
-            self.request_file("test_firewalls.csv")
+            self.request_file("test.csv")
         
     ###
     ### General GUI Update functions
     ###
     
+    def enable_entry(self):
+        if self.enable_password_bool.get() == 1:
+            self.enable_password_entry.grid(row=0, column=2, padx=1)
+        else:
+            self.enable_password_entry.grid_remove()
+
+
     def toggle_darkmode(self):
         if self.darkmode:   # go lightmode
             self.darkmode_icon = tk.PhotoImage(file = r"./res/main/moon.png")
@@ -291,12 +378,17 @@ class Application(tk.Tk):
             #for i in range(len(selection)):
             complete_job = self.complete_queue.get()
             print(f"Job Complete! {complete_job['hostname']}")
-            if complete_job['status'] == "complete":
-                self.job_data.load_session_file(0)
+            #if complete_job['status'] == "complete":
+            self.job_data.load_session_file(0)
             self.update_job_status(complete_job['index'], complete_job['status'])
             time.sleep(0.1)
 
     def put_job_in_queue(self, selection):
+
+        if self.enable_password_bool.get():
+            enable_pass = self.enable_password.get()
+        else:
+            enable_pass = self.password.get()
 
         for host in selection:
             
@@ -304,6 +396,7 @@ class Application(tk.Tk):
             self.manager_queue.put({
                 "username" : self.username.get(),
                 "password" : self.password.get(),
+                "enable" : enable_pass,
                 "hostname" : self.device_data[host]['hostname'],
                 "index" : host,
                 "device_type" : "cisco_asa",
@@ -312,7 +405,7 @@ class Application(tk.Tk):
                 "additional_data" : self.device_data[host]['additional_data']
                 }
             )
-    
+
     ###
     ### File/Job Load functions
     ###
@@ -345,8 +438,6 @@ class Application(tk.Tk):
     
         """
         filename = filepath.split("/")[-1]
-        print(filename)
-        self.lookup_queue.empty()
 
         if filename[-3:] == 'csv':
             self.device_data = []
@@ -357,7 +448,8 @@ class Application(tk.Tk):
 
                 input_data = csv.DictReader(csv_file)
                 
-                for n, entry in enumerate(input_data):
+                index = 0
+                for entry in input_data:
                     additional_data = {}
                     hostname = ""
                     for key in entry.keys():
@@ -366,15 +458,19 @@ class Application(tk.Tk):
                         else:
                             additional_data[key] = entry[key]
                     
-                    self.device_data.append({
-                        'active' : True,
-                        'hostname' : hostname,
-                        'address' : 'N/a',
-                        'status' : 'pending',
-                        'index' : n,
-                        'log_folder' : f"./jobs/{filename[:-4]}/logs/{hostname}/",
-                        'additional_data' : additional_data
-                    })
+                    if hostname not in [ host['hostname'] for host in self.device_data ]:
+                        self.device_data.append({
+                            'active' : True,
+                            'hostname' : hostname,
+                            'address' : 'N/a',
+                            'status' : 'pending',
+                            'index' : index,
+                            'log_folder' : f"./jobs/{filename[:-4]}/logs/{hostname}/",
+                            'additional_data' : additional_data
+                        })
+                        index += 1
+
+                print(len(self.device_data), index)
                 
             if filename[:-4] not in listdir("./jobs/"):
                 os.makedirs(f"./jobs/{filename[:-4]}")

@@ -47,7 +47,7 @@ class WorkerThread(Thread):
             if not self.work_queue.empty():
                 job = self.work_queue.get()
                 remote_connection = RemoteConnection(job, self.root)
-                if remote_connection.status not in ['connecting','connected','running']:
+                if remote_connection.thread_status not in ['connecting','connected','running']:
                     f"Job Finished: {remote_connection.hostname}"
                     self.complete_queue.put({
                         "username" : remote_connection.username,

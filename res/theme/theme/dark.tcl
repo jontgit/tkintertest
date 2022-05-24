@@ -53,6 +53,15 @@ namespace eval ttk::theme::azure-dark {
             }
         }
 
+        ttk::style layout TCustomMenubutton {
+            Menubutton.button -children {
+                Menubutton.padding -children {
+                    Menubutton.indicator -side right
+                    Menubutton.label -side right -expand true
+                }
+            }
+        }
+
         ttk::style layout TOptionMenu {
             OptionMenu.button -children {
                 OptionMenu.padding -children {
@@ -231,6 +240,23 @@ namespace eval ttk::theme::azure-dark {
             ] -border 4 -sticky ewns 
 
         ttk::style element create Menubutton.indicator \
+            image [list $I(down) \
+                active   $I(down) \
+                pressed  $I(down) \
+                disabled $I(down) \
+            ] -width 15 -sticky e
+
+        # CustomMenubutton
+        ttk::style configure TCustomMenubutton -padding {8 4 4 4}
+
+        ttk::style element create CustomMenubutton.button \
+            image [list $I(box-basic) \
+                disabled $I(box-basic) \
+                pressed $I(box-basic) \
+                active $I(box-accent) \
+            ] -border 4 -sticky ewns 
+
+        ttk::style element create CustomMenubutton.indicator \
             image [list $I(down) \
                 active   $I(down) \
                 pressed  $I(down) \

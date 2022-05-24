@@ -9,8 +9,8 @@ class NamespaceLookup(Thread):
         self.daemon = True
         self.lookup_queue = lookup_queue
         self.root = root
-        self.time_out = False
-        
+
+
     def run(self):
         while True:
             if not self.lookup_queue.empty():
@@ -21,13 +21,19 @@ class NamespaceLookup(Thread):
                 time.sleep(0.1)
 
     def lookup(self, device):
+
         try:
             time.sleep(0.1)
             address = socket.gethostbyname(device['hostname'])
-            self.root.device_data[device["index"]]['address'] = address
+            if device["index"] < len(self.root.device_data):
+                if self.root.device_data[device["index"]]['hostname'] == device['hostname']:
+                    self.root.device_data[device["index"]]['address'] = address
         except socket.gaierror:
-            self.root.device_data[device["index"]]['active'] = False
-            self.root.device_data[device["index"]]['status'] = "unreachable"
-            
-        self.root.job_list.update_job_status(device["index"])
-        self.lookup_queue.task_done()
+            if device["index"] < len(self.root.device_data):
+                if self.root.device_data[device["index"]]['hostname'] == device['hostname']:
+                    self.root.device_data[device["index"]]['active'] = False
+                    self.root.device_data[device["index"]]['status'] = "unreachable"
+        
+        if device["index"] < len(self.root.device_data):
+            self.root.job_list.update_job_status(device["index"])
+            self.lookup_queue.task_done()

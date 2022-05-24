@@ -41,6 +41,13 @@ class JobList(tk.Canvas):
         self.frame = tk.Frame(self)
         self.create_drop_down()
 
+
+        self.header_frame = tk.Frame(self)
+        self.header_frame.place(x=0, y=0, relheight=1, relwidth=1)
+        
+        self.list_frame = tk.Frame(self)
+        self.list_frame.place(x=0, y=37, relheight=1, relwidth=1)
+
         self.pack(side="right", fill="both", expand=True)
         self.create_window(0, 0, window=self.frame, anchor='nw', width=382)
         
@@ -142,7 +149,7 @@ class JobList(tk.Canvas):
         this in the return as an int.
         """
         search = re.search('(\d+)$', str(frame)).group()
-        return int(search)-1
+        return int(search)
 
     def _set_command(self, command):
         print(f"Set {command}")
@@ -158,6 +165,9 @@ class JobList(tk.Canvas):
             self._command_edit = not self._command_edit
         elif command == "clear":
             self._command_clear = not self._command_clear
+
+    def update_job_icon(self, row, severity):
+        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
 
     def update_job_status(self, row):
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
@@ -183,83 +193,88 @@ class JobList(tk.Canvas):
 
         #print(frame_index, self.highlight_index)
 
-        # Highlighted 
-        if frame_index == self.highlight_index:
+        if self.highlight_index != None:
 
-            colour = self.colour_pallete['highlight']
-            #print("Highlight")
+            # Highlighted 
+            if frame_index == self.highlight_index:
+                colour = self.colour_pallete['highlight']
+                #print("Highlight")
 
-        # Selected
-        if frame_index in self.selected_jobs:
+            # Selected & Highlighted
+            if frame_index in self.selected_jobs and \
+                self.highlight_index != -1 and \
+                frame_index == self.highlight_index:
 
-            colour = self.colour_pallete['selection']
-            #print("Selected")
+                colour = self.colour_pallete['selection_highlight']
+                #print("Selected & Highlighted")
 
-        # Focused
-        if frame_index == self.focus_index:
+            # Focused & Highlighted
+            if frame_index == self.focus_index and \
+                frame_index == self.highlight_index:
 
-            colour = self.colour_pallete['focus']
-            #print("Focused")
-
-        # Selected & Highlighted
-        if frame_index in self.selected_jobs and \
-            self.highlight_index != -1 and \
-            frame_index == self.highlight_index:
-
-            colour = self.colour_pallete['selection_highlight']
-            #print("Selected & Highlighted")
-
-        # Focused & Highlighted
-        if frame_index == self.focus_index and \
-            frame_index == self.highlight_index:
-
-            colour = self.colour_pallete['focus_highlight']
-            #print("Focused & Highlighted")
+                colour = self.colour_pallete['focus_highlight']
+                #print("Focused & Highlighted")
             
-        # Focused & Selected
-        if frame_index == self.focus_index and \
-            frame_index in self.selected_jobs:
+            # Focused & Selected & Highlighted
+            if frame_index == self.focus_index and \
+                frame_index in self.selected_jobs and \
+                self.highlight_index != -1 and \
+                frame_index == frame_index:
 
-            colour = self.colour_pallete['focus_selection']
-            #print("Focused & Selected")
+                colour = self.colour_pallete['focus_highlight_selection']
+                #print("Focused & Selected & Highlighted")
             
-        # Focused & Selected & Highlighted
-        if frame_index == self.focus_index and \
-            frame_index in self.selected_jobs and \
-            self.highlight_index != -1 and \
-            frame_index == frame_index:
+            
+            # Disabled & Highlighted
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index == self.highlight_index:
 
-            colour = self.colour_pallete['focus_highlight_selection']
-            #print("Focused & Selected & Highlighted")
-            
-        # Disabled
-        if not self.root.device_data[frame_index]['active']:
+                colour = self.colour_pallete['disabled_highlight']
+                #print("Disabled & Highlighted")
+                
+            # Disabled & Highlighted & Focused
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index == self.highlight_index and \
+                frame_index == self.focus_index:
 
-            colour = self.colour_pallete['disabled']
-            #print("Disabled")
-            
-        # Disabled & Focused
-        if not self.root.device_data[frame_index]['active'] and \
-            frame_index == self.focus_index:
+                colour = self.colour_pallete['disabled_highlight_focus']
+                #print("Disabled & Highlighted & Focused")
+                
+        else:    
+                
+            # Selected
+            if frame_index in self.selected_jobs:
 
-            colour = self.colour_pallete['disabled_focus']
-            #print("Disabled & Focused")
-            
-        # Disabled & Highlighted
-        if not self.root.device_data[frame_index]['active'] and \
-            frame_index == self.highlight_index:
+                colour = self.colour_pallete['selection']
+                #print("Selected")
 
-            colour = self.colour_pallete['disabled_highlight']
-            #print("Disabled & Highlighted")
-            
-        # Disabled & Highlighted & Focused
-        if not self.root.device_data[frame_index]['active'] and \
-            frame_index == self.highlight_index and \
-            frame_index == self.focus_index:
+            # Focused
+            if frame_index == self.focus_index:
 
-            colour = self.colour_pallete['disabled_highlight_focus']
-            #print("Disabled & Highlighted & Focused")
-            
+                colour = self.colour_pallete['focus']
+                #print("Focused")
+
+                
+            # Focused & Selected
+            if frame_index == self.focus_index and \
+                frame_index in self.selected_jobs:
+
+                colour = self.colour_pallete['focus_selection']
+                #print("Focused & Selected")
+
+            # Disabled
+            if not self.root.device_data[frame_index]['active']:
+
+                colour = self.colour_pallete['disabled']
+                #print("Disabled")
+                
+            # Disabled & Focused
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index == self.focus_index:
+
+                colour = self.colour_pallete['disabled_focus']
+                #print("Disabled & Focused")
+
 
         for cell in self.jobs[frame_index][3].winfo_children():
             cell.configure(bg=colour['bg'])
@@ -370,14 +385,14 @@ class JobList(tk.Canvas):
         as we also bind the mousewheel.
         """
 
+        print(event.widget)
+
         self.bind_all("<Button-1>", self._focus_row)
         self.bind_all("<Control-Button-1>", self._select_row)
         self.bind_all("<Shift-Button-1>", self._shift_select_row)
         self.bind_all("<Button-3>", self._job_menu)
 
-        old_highlight = self.highlight_index
         self.highlight_index = self._get_row_index(event.widget)
-        self._set_row_colour_(old_highlight)
         self._set_row_colour_(self.highlight_index)
     
     def _unhighlight_row(self, event):
@@ -391,6 +406,11 @@ class JobList(tk.Canvas):
         self.unbind_all("<Control-Button-1>")
         self.unbind_all("<Shift-Button-1>")
         self.unbind_all("<Button-3>")
+        
+        
+        old_highlight = self.highlight_index
+        self.highlight_index = None
+        self._set_row_colour_(old_highlight)
 
     ###
     ### RIGHT CLICK MENU FUNCTIONS
@@ -401,11 +421,6 @@ class JobList(tk.Canvas):
         self.selected_jobs = []
         for job in ran_jobs:
             self._set_row_colour_(job)
-        
-    def _run_jobs(self):
-        print("RUNNING: ",self.selected_jobs)
-        self.root.put_job_in_queue(self.selected_jobs)
-        self._clear_job_selection()
         
     def _job_menu(self, event):
         """
@@ -439,7 +454,7 @@ class JobList(tk.Canvas):
                     else:
                         enable_disable_label = "Disable"
 
-                self.drop_down.entryconfigure(0, label=enable_disable_label)
+                self.drop_down.entryconfigure(4, label=enable_disable_label)
                 
                 #if len(self.selected_jobs) > 0:
                 #    self.drop_down.entryconfigure(1, label=f"({len(self.selected_jobs)}) Reset")
@@ -451,35 +466,12 @@ class JobList(tk.Canvas):
         finally:
 
             self.drop_down.grab_release()
-            """print("ASDADADADd")
 
-            
-            if self._command_disable:
-                pass
-                self._set_command("disable")
-
-            elif self._command_reset:
-                pass
-                self._set_command("reset")
-
-            elif self._command_run_jobs:
-                self._run_jobs()
-                self._set_command("run_jobs")
-
-            elif self._command_remove:
-                pass
-                self._set_command("remove")
-
-            elif self._command_edit:
-                pass
-                self._set_command("edit")
-
-            elif self._command_clear:
-                pass
-                self._set_command("clear")
-
-            """
-
+        
+    def _run_jobs(self):
+        print("RUNNING: ",self.selected_jobs)
+        self.root.put_job_in_queue(self.selected_jobs)
+        self._clear_job_selection()
 
     def _toggle_enabled(self):
         for job in self.selected_jobs:
@@ -491,18 +483,24 @@ class JobList(tk.Canvas):
                 
         self.selected_jobs = []
 
+    def _reset_jobs(self):
+        pass
+
+    def _remove_jobs(self):
+        pass
+
     ###
     ### DATA LOAD FUNCTIONS
     ###
 
     def create_drop_down(self):
         self.drop_down = tk.Menu(self.frame, tearoff=False)
-        self.drop_down.add_command(label="Disable", command=self._set_command("disable"))
-        self.drop_down.add_command(label="Reset", command=self._set_command("reset"))
         self.drop_down.add_command(label="Run", command=self._run_jobs)#self._set_command("run_jobs"))
-        self.drop_down.add_command(label="Remove", command=self._set_command("remove"))
+        self.drop_down.add_command(label="Reset", command=self._reset_jobs)
+        self.drop_down.add_command(label="Remove", command=self._remove_jobs)
         self.drop_down.add_separator()
-        self.drop_down.add_command(label="Edit", command=self._set_command("edit"))
+        self.drop_down.add_command(label="Disable", command=self._toggle_enabled)
+        self.drop_down.add_command(label="Mark Complete", command=self._set_command("clear"))
         self.drop_down.add_command(label="Clear Selection", command=self._set_command("clear"))
 
     def clear_frame(self):
@@ -537,13 +535,12 @@ class JobList(tk.Canvas):
             "auth error" : tk.PhotoImage(file="./res/disabled/auth.png")
         }
 
-    def load_data(self, data):
+    def load_data(self, data, filter="all"):
         self.clear_frame()
         self.create_headers()
-        for n, line in enumerate(data, 1):
-            
-            line_frame = tk.Frame(self.frame, name=f"!frame{n}")#, highlightbackground = self.background_colour, highlightcolor= self.background_colour, highlightthickness=1)#, relief="solid", bd=1)
-            line_frame.grid(row=n, column=0, ipadx=3, columnspan=4, sticky="nesw")
+        for n, line in enumerate(data, 0):
+            line_frame = tk.Frame(self.list_frame, name=f"!frame{n}")
+            line_frame.place(x=0, y=n*25, height=25, width=386)
             
             line_frame.bind("<Button-1>", self._focus_row)
             line_frame.bind("<Control-Button-1>", self._select_row)
@@ -552,32 +549,34 @@ class JobList(tk.Canvas):
             line_frame.bind("<Enter>", self._highlight_row)
             line_frame.bind("<Leave>", self._unhighlight_row)
 
-            line_frame.grid_columnconfigure(4, weight=1)
+            #line_frame.grid_columnconfigure(4, weight=1)
             
+            # HOSTNAME
             if len(line['hostname']) > 30:
                 hostname = f"{line['hostname'][:30]}..."
             else:
                 hostname = line['hostname'].ljust(33)
+            hostname = line['hostname'].ljust(20)
             
-            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10))#, borderwidth=1, relief="flat", bg=self.background_colour)
+            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), anchor="w")
             if not line['active']:
                 hostname.configure(fg="#A1A1A1")
-            hostname.grid(row=0, column=1, ipadx=3, sticky="nesw")
+            hostname.place(x=0, y=0, relheight=1, width=200)
             
+            # STATUS IMAGES
             if not line['active']:
-                status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']])#, borderwidth=1, relief="flat", bg=self.background_colour)
+                status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']])
             else:
-                status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']])#, borderwidth=1, relief="flat", bg=self.background_colour)
-                
-            status_icon.grid(row=0, column=3, ipadx=3, sticky="nesw")
-            
-            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize(), anchor="w")#, borderwidth=1, relief="flat", bg=self.background_colour)
+                status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']])
+            status_icon.place(x=200, y=0, relheight=1, width=50)
+
+            # STATUS 
+            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize())
             if not line['active']:
                 status.configure(fg="#A1A1A1")
-            status.grid(row=0, column=4, ipadx=3, sticky="nesw")
+            status.place(x=250, y=0, relheight=1, width=134)
             
             if str(line_frame) == self.focus_frame:
-                #self._set_row_border(line_frame)#, self.focus_border_colour)
                 self.focus_frame = line_frame
                          
             self.jobs.append((hostname, status_icon, status, line_frame))
@@ -586,14 +585,27 @@ class JobList(tk.Canvas):
         self.parent.update()
         self.config(scrollregion=self.bbox("all"))
 
+    def get_statuses(self, event):
+        statuses = ["Status"]
+        for device in self.root.device_data:
+            if device['status'].capitalize() not in statuses:
+                statuses.append(device['status'].capitalize())
+        self.status_header.configure(values=statuses)
+
+    def status_filter(self, event):
+        self.status_header.selection_clear()
+        self.focus()
+
+        print(self.status_header.get())
+
     def create_headers(self):
 
-        self.frame.grid_columnconfigure(1, weight=1)
-        self.frame.grid_columnconfigure(2, weight=1)
-        self.frame.grid_columnconfigure(3, weight=1)
-
-        self.hostname_header = tk.Label(self.frame, text="Hostname", background="grey15")#, borderwidth=1, relief="ridge")
-        self.hostname_header.grid(row=0, column=1, sticky="nesw")
+        self.hostname_header = ttk.Button(self.header_frame, text="Hostname")
+        self.hostname_header.place(x=0, y=0, width=191)
         
-        self.status_header = tk.Label(self.frame, text="Status", background="grey15")#, borderwidth=1, relief="ridge")
-        self.status_header.grid(row=0, column=2, columnspan=2, sticky="nesw")
+        self.status_header = ttk.Combobox(self.header_frame, state="readonly", values=["Status"] )
+        self.status_header.current(0)
+        print(self.status_header.winfo_class())
+        self.status_header.bind('<<ComboboxSelected>>', self.status_filter)
+        self.status_header.bind('<1>', self.get_statuses)
+        self.status_header.place(x=193, y=0, width=191)

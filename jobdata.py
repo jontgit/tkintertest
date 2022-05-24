@@ -92,30 +92,39 @@ class JobData(tk.Canvas):
         self.refresh_needed = False
 
     def append_log_session(self):
-        log_file = self.session_log_selection.get()
-        with open(f"{self.selection_info['log_folder']}{log_file}", 'r') as log_reader:
-            log = log_reader.read()
-        current_log = self.session_log.get("1.0", "end")
-        
-        if (len(log) - len(current_log)) > 0:
-            self.session_log.configure(state='normal')
-            self.session_log.insert("end", log[-(len(log) - len(current_log)):])
-            self.session_log.see("end")
-            self.session_log.configure(state='disable')
-        
+        try:
+            log_file = self.session_log_selection.get()
+            with open(f"{self.selection_info['log_folder']}{log_file}", 'r') as log_reader:
+                log = log_reader.read()
+            current_log = self.session_log.get("1.0", "end")
+            
+            if (len(log) - len(current_log)) > 0:
+                self.session_log.configure(state='normal')
+                self.session_log.insert("end", log[-(len(log) - len(current_log)):])
+                self.session_log.see("end")
+                self.session_log.configure(state='disable')
+
+        except:
+            print(f"Error opening log... {self.job_hostname.get()}")
+
     def load_session_file(self, event):
 
-        log_file = self.session_log_selection.get()
-        with open(f"{self.selection_info['log_folder']}{log_file}", 'r') as log_reader:
-            log = log_reader.read()
-        
-        #print(len(log), self.prev_len, (len(log) - self.prev_len))
-        self.session_log.configure(state='normal')
-        self.session_log.delete('1.0', 'end')
-        self.session_log.insert("end", log)
-        self.session_log.configure(state='disable')
-        self.session_log.see("end")
-        self.prev_len = len(log)
+        try:
+            
+            log_file = self.session_log_selection.get()
+            with open(f"{self.selection_info['log_folder']}{log_file}", 'r') as log_reader:
+                log = log_reader.read()
+            #print(len(log), self.prev_len, (len(log) - self.prev_len))
+            self.session_log.configure(state='normal')
+            self.session_log.delete('1.0', 'end')
+            self.session_log.insert("end", log)
+            self.session_log.configure(state='disable')
+            self.session_log.see("end")
+            self.prev_len = len(log)
+
+        except:
+            print(f"Error opening log... {self.job_hostname.get()}")
+
 
     def populate_overview(self):
         
