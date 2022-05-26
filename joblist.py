@@ -29,14 +29,6 @@ class JobList(tk.Canvas):
         
         self.focus_index = 0
         self.highlight_index = -1
-                
-        self._command_disable = False
-        self._command_reset = False
-        self._command_run_jobs = False
-        self._command_remove = False
-        self._command_edit = False
-        self._command_clear = False
-        self.empty_selection = True
         
         self.frame = tk.Frame(self)
         self.create_drop_down()
@@ -121,6 +113,8 @@ class JobList(tk.Canvas):
         }
 
         parent.update()
+        
+        self.create_headers()
         self.config(scrollregion=self.bbox("all"))
 
     ###
@@ -152,24 +146,12 @@ class JobList(tk.Canvas):
         return int(search)
 
     def _set_command(self, command):
-        print(f"Set {command}")
-        if command == "disable":
-            self._command_disable = not self._command_disable
-        elif command == "reset":
-            self._command_reset = not self._command_reset
-        elif command == "run_jobs":
-            self._command_run_jobs = not self._command_run_jobs
-        elif command == "remove":
-            self._command_remove = not self._command_remove
-        elif command == "edit":
-            self._command_edit = not self._command_edit
-        elif command == "clear":
-            self._command_clear = not self._command_clear
+        pass
 
     def update_job_icon(self, row, severity):
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
 
-    def update_job_status(self, row):
+    def update_job_status(self, row):        
         self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
         self.jobs[row][2].configure(text=self.root.device_data[row]['status'].capitalize())
         
@@ -177,6 +159,7 @@ class JobList(tk.Canvas):
             self._set_row_enabled(row)
         else:
             self._set_row_disabled(row)
+    
 
     ###
     ### ROW COLOUR/ATTRIBUTE FUNCTIONS
@@ -385,8 +368,6 @@ class JobList(tk.Canvas):
         as we also bind the mousewheel.
         """
 
-        print(event.widget)
-
         self.bind_all("<Button-1>", self._focus_row)
         self.bind_all("<Control-Button-1>", self._select_row)
         self.bind_all("<Shift-Button-1>", self._shift_select_row)
@@ -455,12 +436,6 @@ class JobList(tk.Canvas):
                         enable_disable_label = "Disable"
 
                 self.drop_down.entryconfigure(4, label=enable_disable_label)
-                
-                #if len(self.selected_jobs) > 0:
-                #    self.drop_down.entryconfigure(1, label=f"({len(self.selected_jobs)}) Reset")
-                #    self.drop_down.entryconfigure(2, label=f"({len(self.selected_jobs)}) Run")
-                #    self.drop_down.entryconfigure(3, label=f"({len(self.selected_jobs)}) Remove")
-                    
                 self.drop_down.tk_popup(event.x_root, event.y_root)
             
         finally:
@@ -504,8 +479,8 @@ class JobList(tk.Canvas):
         self.drop_down.add_command(label="Clear Selection", command=self._set_command("clear"))
 
     def clear_frame(self):
-        self.frame.pack_forget()
-        for widget in self.frame.winfo_children():
+        self.list_frame.pack_forget()
+        for widget in self.list_frame.winfo_children():
             widget.destroy()
         self.create_drop_down()
 
@@ -535,53 +510,66 @@ class JobList(tk.Canvas):
             "auth error" : tk.PhotoImage(file="./res/disabled/auth.png")
         }
 
-    def load_data(self, data, filter="all"):
-        self.clear_frame()
-        self.create_headers()
-        for n, line in enumerate(data, 0):
-            line_frame = tk.Frame(self.list_frame, name=f"!frame{n}")
-            line_frame.place(x=0, y=n*25, height=25, width=386)
-            
-            line_frame.bind("<Button-1>", self._focus_row)
-            line_frame.bind("<Control-Button-1>", self._select_row)
-            line_frame.bind("<Shift-Button-1>", self._shift_select_row)
-            line_frame.bind("<Button-3>", self._job_menu)
-            line_frame.bind("<Enter>", self._highlight_row)
-            line_frame.bind("<Leave>", self._unhighlight_row)
+    def load_device_gui(self, index, line, position):
+        line_frame = tk.Frame(self.list_frame, name=f"!frame{index}")
+        line_frame.place(x=0, y=position*25, height=25, width=386)
+        
+        line_frame.bind("<Button-1>", self._focus_row)
+        line_frame.bind("<Control-Button-1>", self._select_row)
+        line_frame.bind("<Shift-Button-1>", self._shift_select_row)
+        line_frame.bind("<Button-3>", self._job_menu)
+        line_frame.bind("<Enter>", self._highlight_row)
+        line_frame.bind("<Leave>", self._unhighlight_row)
 
-            #line_frame.grid_columnconfigure(4, weight=1)
-            
-            # HOSTNAME
-            if len(line['hostname']) > 30:
-                hostname = f"{line['hostname'][:30]}..."
-            else:
-                hostname = line['hostname'].ljust(33)
-            hostname = line['hostname'].ljust(20)
-            
-            hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), anchor="w")
-            if not line['active']:
-                hostname.configure(fg="#A1A1A1")
-            hostname.place(x=0, y=0, relheight=1, width=200)
-            
-            # STATUS IMAGES
-            if not line['active']:
-                status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']])
-            else:
-                status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']])
-            status_icon.place(x=200, y=0, relheight=1, width=50)
+        #line_frame.grid_columnconfigure(4, weight=1)
+        
+        # HOSTNAME
+        if len(line['hostname']) > 30:
+            hostname = f"{line['hostname'][:30]}..."
+        else:
+            hostname = line['hostname'].ljust(33)
+        hostname = line['hostname'].ljust(20)
+        
+        hostname = tk.Label(line_frame, text=hostname, font=('Consolas', 10), anchor="w")
+        if not line['active']:
+            hostname.configure(fg="#A1A1A1")
+        hostname.place(x=0, y=0, relheight=1, width=200)
+        
+        # STATUS IMAGES
+        if not line['active']:
+            status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']])
+        else:
+            status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']])
+        status_icon.place(x=200, y=0, relheight=1, width=50)
 
-            # STATUS 
-            status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize())
-            if not line['active']:
-                status.configure(fg="#A1A1A1")
-            status.place(x=250, y=0, relheight=1, width=134)
-            
-            if str(line_frame) == self.focus_frame:
-                self.focus_frame = line_frame
-                         
-            self.jobs.append((hostname, status_icon, status, line_frame))
-            self._set_row_colour_(n - 1)
+        # STATUS 
+        status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize())
+        if not line['active']:
+            status.configure(fg="#A1A1A1")
+        status.place(x=250, y=0, relheight=1, width=134)
+        
+        if str(line_frame) == self.focus_frame:
+            self.focus_frame = line_frame
+                        
+        self.jobs.append((hostname, status_icon, status, line_frame))
+        self._set_row_colour_(index)
     
+
+    def load_data(self, data, in_filter="Status"):
+        self.clear_frame()
+        
+        if in_filter == "Status":
+            for n, line in enumerate(data, 0):
+                self.load_device_gui(n, line, n)
+                
+        else:
+            display_count = 0
+            for n, line in enumerate(data, 0):
+                if line['status'].capitalize() == in_filter:
+                    self.load_device_gui(n, line, display_count)
+                    display_count += 1
+                    
+                    
         self.parent.update()
         self.config(scrollregion=self.bbox("all"))
 
@@ -594,18 +582,15 @@ class JobList(tk.Canvas):
 
     def status_filter(self, event):
         self.status_header.selection_clear()
-        self.focus()
-
-        print(self.status_header.get())
+        self.clear_frame()
+        self.load_data(self.root.device_data, self.status_header.get())
 
     def create_headers(self):
 
         self.hostname_header = ttk.Button(self.header_frame, text="Hostname")
         self.hostname_header.place(x=0, y=0, width=191)
-        
         self.status_header = ttk.Combobox(self.header_frame, state="readonly", values=["Status"] )
         self.status_header.current(0)
-        print(self.status_header.winfo_class())
         self.status_header.bind('<<ComboboxSelected>>', self.status_filter)
         self.status_header.bind('<1>', self.get_statuses)
         self.status_header.place(x=193, y=0, width=191)

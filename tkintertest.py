@@ -11,7 +11,6 @@ import shutil
 from threading import Thread
 from queue import Queue
 from os import listdir
-from turtle import bgcolor
 
 from ide import Editor
 from manager import ManagerThread
@@ -20,17 +19,29 @@ from jobdata import JobData
 from joblist import JobList
 from entry import CustomEntry
 from option_menu import CustomOptionMenu
+from export_menu import ExportMenu
 
-#
-# DONE - DUPLICATE ENTRIES 
-# DONE - FILE HANDLING 
-# DONE - UNREACHABLE CHECK - Set disabled
-# Export Results/Job Status (Save Job)
-# Sort by status
-# Custom Status
-# 
-# 
+# TODO 
+#################
+# DONE    - DUPLICATE ENTRIES 
+# DONE    - file error handling 
+# DONE    - Unreachable - Set disabled
+# DONE    - Sort by status
+# PARTIAL - Export Results/Job Status (Save Job)
+#         - Job System (Job files, save status)
+#         - Media Buttons (Run, Run All, Pause)
+#         - Preferences/Settings
+#         - Input data for jobs 
+#         - Return data from jobs
+# PARTIAL - Custom job status from scripts
+#         - Tooltips
 
+# BUG
+#################
+#         - Colour isn't right on unreachable jobs after being selected
+#         - Job log is created even if don't connect - will need custom log handling
+#         - IP addr doesn't update unless clicked on
+#         - Focused job doesn't change upon status filter selection
 
 class Application(tk.Tk):
 
@@ -38,7 +49,7 @@ class Application(tk.Tk):
         """
         This is the base application class. This class is passed to many 
         sub-classes as 'root', where function calls and variable changes
-        can be made.
+        can be made to the application as a whole.
         """
         
         super().__init__()
@@ -78,8 +89,7 @@ class Application(tk.Tk):
         ###
 
         # File Menu
-
-
+        
         self.toolbar = tk.Menu(self)
         self.config(menu = self.toolbar)
 
@@ -87,6 +97,8 @@ class Application(tk.Tk):
         self.toolbar.add_cascade(label="File", menu=self.file_menu)
         self.file_menu.add_command(label="Import CSV", command=self.request_file)
         self.file_menu.add_command(label="Open Job", command=self.request_file)
+        
+        # Script Menu
 
         self.scripts_menu = tk.Menu(self.toolbar, tearoff="off")
         self.toolbar.add_cascade(label="Scripts", menu=self.scripts_menu)
@@ -94,47 +106,14 @@ class Application(tk.Tk):
         self.scripts_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
         self.scripts_menu.add_command(label="Edit", command=self.editor_edit_file)
         self.scripts_menu.add_command(label="Delete", command=self.delete_script)
-
-
-        """self.toolbar = tk.Frame(self, bg="grey20")
-        self.toolbar.place(x=0, y=0, relwidth=1, height=self.button_height)
-
-        self.file_menu = tk.Menu(self.toolbar, tearoff="off")
-        self.file_menu.add_command(label="Import CSV", command=self.request_file)
-        self.file_menu.add_command(label="Open Job", command=self.request_file)
-        self.file_menu_button = ttk.Menubutton(
-            self.toolbar, text="File", menu=self.file_menu, direction="below"
-        )
-        self.file_menu_button.grid(row=0, column=0, padx=1)
-
-        # Script Menu
-        
-        self.scripts_menu = tk.Menu(self.toolbar, tearoff="off")
-        self.scripts_menu.add_command(label="Create New", command=self.editor_new_file)
-        self.scripts_menu.add_separator()
-        self.scripts_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
-        self.scripts_menu.add_command(label="Edit", command=self.editor_edit_file)
-        self.scripts_menu.add_separator()
-        self.scripts_menu.add_command(label="Delete", command=self.delete_script)
-        self.scripts_menu_button = ttk.Menubutton(
-            self.toolbar, text="Scripts", menu=self.scripts_menu, direction="below"
-        )
-        self.scripts_menu_button.grid(row=0, column=1, padx=1)
         
         # Settings Menu
-        
+
         self.settings_menu = tk.Menu(self.toolbar, tearoff="off")
-        self.settings_menu.add_command(label="Create New", command=self.editor_new_file)
-        self.settings_menu.add_separator()
-        self.settings_menu.add_command(label="Edit Current", command=self.editor_edit_current_file)
-        self.settings_menu.add_command(label="Edit", command=self.editor_edit_file)
-        self.settings_menu.add_separator()
-        self.settings_menu.add_command(label="Delete", command=self.delete_script)
-        self.settings_menu_button = ttk.Menubutton(
-            self.toolbar, text="Scripts", menu=self.scripts_menu, direction="below"
-        )
-        self.scripts_menu_button.grid(row=0, column=2, padx=1)"""
-        
+        self.toolbar.add_cascade(label="Settings", menu=self.settings_menu)
+        self.settings_menu.add_command(label="Preferences", command=self.editor_new_file)
+        self.settings_menu.add_command(label="Style", command=self.editor_edit_current_file)
+
         ###
         ### Tree/Job View (Left side) config
         ###
@@ -156,12 +135,10 @@ class Application(tk.Tk):
         self.top_bar_frame_1 = tk.Frame(self)
 
         self.top_bar_frame_1_left = tk.Frame(self.top_bar_frame_1)
-        #self.top_bar_frame_1_left.grid(row=0, column=0)
         self.top_bar_frame_1_left.place(y=0, x=0, height=35)
 
 
         self.top_bar_frame_1_right = tk.Frame(self.top_bar_frame_1)
-        #self.top_bar_frame_1_right.grid(row=0, column=1)
         self.top_bar_frame_1_right.place(y=0, x=580, height=35)
 
 
@@ -174,7 +151,6 @@ class Application(tk.Tk):
         self.password = tk.StringVar()
         self.password_entry = CustomEntry(self.top_bar_frame_1_left, self.password, "Password...", "*")
         self.password_entry.grid(row=0, column=1, padx=1)
-        #self.password_entry = ttk.Entry(self.top_bar_frame_1, width=20, textvariable=self.password, show="*").grid(row=0, column=3)
 
         # Enable Password
 
@@ -231,7 +207,7 @@ class Application(tk.Tk):
         #self.darkmode_button = ttk.Button(self.top_bar_frame_2, image=self.lightmode_icon, command=self.toggle_darkmode).grid(row=1, column=0, padx=1)
         # Export button
         self.export_icon = tk.PhotoImage(file = r"./res/main/download_w.png")
-        self.export_button = ttk.Button(self.top_bar_frame_2, image=self.export_icon)
+        self.export_button = ttk.Button(self.top_bar_frame_2, image=self.export_icon, command=self.export_current)
         self.export_button.grid(row=1, column=0, padx=1, sticky="nsew")
 
         # Run button
@@ -409,6 +385,9 @@ class Application(tk.Tk):
     ###
     ### File/Job Load functions
     ###
+    
+    def export_current(self):
+        ExportMenu(self, self.filename)
 
     def request_file(self, filename=None):
         if filename == None:
@@ -440,6 +419,7 @@ class Application(tk.Tk):
         filename = filepath.split("/")[-1]
 
         if filename[-3:] == 'csv':
+            self.filename = filename
             self.device_data = []
 
             #self.create_job(filename)
