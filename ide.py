@@ -159,6 +159,7 @@ class Script():
         amended_script = ""
         for line in self.text.get("1.0","end").split('\n'):
             new_line = line.replace("send_command", "self.remote_connection.send_command")
+            new_line = line.replace("send_command", "self.remote_connection.send_command")
             amended_script += f"        {new_line}\n"
         return amended_script
 

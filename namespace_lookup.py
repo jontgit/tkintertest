@@ -21,7 +21,7 @@ class NamespaceLookup(Thread):
                 time.sleep(0.1)
 
     def lookup(self, device):
-
+        address = None
         try:
             time.sleep(0.1)
             address = socket.gethostbyname(device['hostname'])
@@ -35,5 +35,6 @@ class NamespaceLookup(Thread):
                     self.root.device_data[device["index"]]['status'] = "unreachable"
         
         if device["index"] < len(self.root.device_data):
-            self.root.job_list.update_job_status(device["index"])
-            self.lookup_queue.task_done()
+            if self.root.check_device_filter(device["index"]):
+                self.root.job_list.update_job_status(device["index"])
+                self.lookup_queue.task_done()

@@ -2,40 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as font
 import re
+from turtle import width
 
-class ListFilter(tk.Frame):
-    
-    def __init__(self, parent, root):
-        """
-
-        """
-        super().__init__(parent)
-        self.root = root
-        self.create_headers()
-        
-    def get_statuses(self, event):
-        statuses = ["Status"]
-        for device in self.root.device_data:
-            if device['status'].capitalize() not in statuses:
-                statuses.append(device['status'].capitalize())
-        self.status_header.configure(values=statuses)
-
-    def status_filter(self, event):
-        self.status_header.selection_clear()
-        self.root.job_list.clear_frame()
-        self.root.job_list.load_data(self.root.device_data, self.status_header.get())
-
-    def create_headers(self):
-        self.hostname_header = ttk.Button(self, text="Hostname")
-        self.hostname_header.place(x=0, y=0, width=191, relheight=1)
-        print("HEADER")
-        
-        self.status_header = ttk.Combobox(self, state="readonly", values=["Status"] )
-        self.status_header.current(0)
-        self.status_header.bind('<<ComboboxSelected>>', self.status_filter)
-        self.status_header.bind('<1>', self.get_statuses)
-        self.status_header.place(x=193, y=0, width=191, relheight=1)
-        
 class JobList(tk.Canvas):
     
     def __init__(self, parent, root):
@@ -62,11 +30,17 @@ class JobList(tk.Canvas):
         self.frame = tk.Frame(self)
         self.create_drop_down()
 
-        #self.header_frame = tk.Frame(self)
-        #self.header_frame.place(x=0, y=0, relheight=1, relwidth=1)
+
+        self.header_frame = tk.Frame(self)
+        self.header_frame.place(x=0, y=0, relheight=1, relwidth=1)
+        
+        self.list_canvas = tk.Canvas(self)
+        self.list_canvas.place(x=0, y=37, relheight=1, relwidth=1)
+        self.list_frame = tk.Frame(self.list_canvas)
+        self.list_frame.place(relheight=1, relwidth=1)
 
         self.pack(side="right", fill="both", expand=True)
-        self.create_window(0, 0, window=self.frame, anchor='nw', width=382)
+        self.create_window(0, 0, window=self.list_frame, anchor='nw', width=382)
         
         self.bind("<MouseWheel>", self._on_mousewheel)
         self.bind('<Enter>', self._bound_to_mousewheel)
@@ -136,16 +110,16 @@ class JobList(tk.Canvas):
                 "bd" : "grey90"
             },
         }
-        #self.create_headers()
+        self.create_headers()
 
         self.scrollbar = ttk.Scrollbar(parent, orient="vertical")
         self.scrollbar.pack(side="left", fill="y")
         
-        self.config(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.config(command=self.yview)
+        self.list_canvas.config(yscrollcommand=self.scrollbar.set)
+        self.scrollbar.config(command=self.list_canvas.yview)
 
         parent.update()
-        self.config(scrollregion=self.bbox("all"))
+        self.config(scrollregion=self.list_canvas.bbox("all"))
 
     ###
     ### MOUSE WHEEL BINDINGS
@@ -159,7 +133,7 @@ class JobList(tk.Canvas):
 
     def _on_mousewheel(self, event):
         if self.winfo_height() <= self.frame.winfo_height():
-            self.yview_scroll(int(-1*(event.delta/120)), "units")
+            self.list_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
 
     ###
     ### GENERIC FUNCTIONS
@@ -513,12 +487,12 @@ class JobList(tk.Canvas):
         self.drop_down.add_command(label="Clear Selection", command=self._set_command("clear"))
 
     def clear_frame(self):
-        self.frame.pack_forget()
-        for widget in self.frame.winfo_children():
+        self.list_frame.pack_forget()
+        for widget in self.list_frame.winfo_children():
             widget.destroy()
         self.create_drop_down()
         self.parent.update()
-        self.config(scrollregion=self.frame.bbox("all"))
+        self.config(scrollregion=self.list_frame.bbox("all"))
 
     def load_images(self):
 
@@ -547,8 +521,9 @@ class JobList(tk.Canvas):
         }
 
     def load_device_gui(self, index, line, position):
-        line_frame = tk.Frame(self.frame, name=f"!frame{index}")
-        line_frame.place(x=0, y=position*25, height=25, relwidth=1)
+        line_frame = tk.Frame(self.list_frame, name=f"!frame{index}")
+        print(index)
+        line_frame.place(x=0, y=position*25, height=25, width=386)
         
         line_frame.bind("<Button-1>", self._focus_row)
         line_frame.bind("<Control-Button-1>", self._select_row)
@@ -582,14 +557,13 @@ class JobList(tk.Canvas):
         status = tk.Label(line_frame, font=('Consolas', 10), text=line['status'].capitalize())
         if not line['active']:
             status.configure(fg="#A1A1A1")
-        status.place(x=250, y=0, relheight=1, width=130)
+        status.place(x=250, y=0, relheight=1, width=134)
         
         if str(line_frame) == self.focus_frame:
             self.focus_frame = line_frame
                         
         self.jobs.append((hostname, status_icon, status, line_frame))
         self._set_row_colour_(index)
-        self.frame.configure(height=position*25)
 
     def load_data(self, data, in_filter="Status"):
         self.clear_frame()
@@ -605,8 +579,9 @@ class JobList(tk.Canvas):
                     self.load_device_gui(n, line, display_count)
                     display_count += 1
                     
+        print(self.list_frame.winfo_height())
         self.parent.update()
-        self.config(scrollregion=self.bbox("all"))
+        self.config(scrollregion=self.list_frame.bbox("all"))
 
     def get_statuses(self, event):
         statuses = ["Status"]
@@ -621,6 +596,7 @@ class JobList(tk.Canvas):
         self.load_data(self.root.device_data, self.status_header.get())
 
     def create_headers(self):
+
         self.hostname_header = ttk.Button(self.header_frame, text="Hostname")
         self.hostname_header.place(x=0, y=0, width=191)
         self.status_header = ttk.Combobox(self.header_frame, state="readonly", values=["Status"] )
@@ -628,3 +604,61 @@ class JobList(tk.Canvas):
         self.status_header.bind('<<ComboboxSelected>>', self.status_filter)
         self.status_header.bind('<1>', self.get_statuses)
         self.status_header.place(x=193, y=0, width=191)
+
+
+class JobList_(tk.Frame):
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.scrollbar = tk.Scrollbar(self)
+        self.list_canvas = tk.Canvas(self, yscrollcommand=self.scrollbar.set)
+        self.scrollbar.place(relheight=1)
+        
+        self.list_frame = tk.Frame(self.list_canvas)
+        self.list_canvas.place(relheight=1, width=380)
+        
+        self.list_canvas.create_window(0, 0, window=self.list_frame, anchor='nw')
+        
+        for i in range(100):
+            tk.Label(self.list_frame,wraplength=350 ,text=r"Det er en kendsgerning, at man bliver distraheret af læsbart indhold på en side, når man betragter dens websider, som stadig er på udviklingsstadiet. Der har været et utal af websider, som stadig er på udviklingsstadiet. Der har været et utal af variationer, som er opstået enten på grund af fejl og andre gange med vilje (som blandt andet et resultat af humor).").pack()
+            tk.Button(self.list_frame,text="anytext").pack()        
+        
+        self.update()
+        self.list_canvas.config(scrollregion=self.list_canvas.bbox("all"))
+    """
+    root=tk.Tk()
+
+    vscrollbar = tk.Scrollbar(root)
+
+    c= tk.Canvas(root,background = "#D2D2D2",yscrollcommand=vscrollbar.set)
+
+    vscrollbar.config(command=c.yview)
+    vscrollbar.pack(side=tk.LEFT, fill=tk.Y) 
+
+    f=tk.Frame(c) #Create the frame which will hold the widgets
+
+    c.pack(side="left", fill="both", expand=True)
+
+    #Updated the window creation
+    c.create_window(0,0,window=f, anchor='nw')
+
+    #Added more content here to activate the scroll
+    for i in range(100):
+        tk.Label(f,wraplength=350 ,text=r"Det er en kendsgerning, at man bliver distraheret af læsbart indhold på en side, når man betragter dens websider, som stadig er på udviklingsstadiet. Der har været et utal af websider, som stadig er på udviklingsstadiet. Der har været et utal af variationer, som er opstået enten på grund af fejl og andre gange med vilje (som blandt andet et resultat af humor).").pack()
+        tk.Button(f,text="anytext").pack()
+
+    #Removed the frame packing
+    #f.pack()
+
+    #Updated the screen before calculating the scrollregion
+    root.update()
+    c.config(scrollregion=c.bbox("all"))
+
+    root.mainloop()"""
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    jlist = JobList_(root)
+    jlist.place(x=0, y=0, width=100)
+    root.mainloop()

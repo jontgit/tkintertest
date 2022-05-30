@@ -17,6 +17,7 @@ from manager import ManagerThread
 from namespace_lookup import NamespaceLookup
 from jobdata import JobData
 from joblist import JobList
+from joblist import ListFilter
 from entry import CustomEntry
 from option_menu import CustomOptionMenu
 from export_menu import ExportMenu
@@ -27,21 +28,24 @@ from export_menu import ExportMenu
 # DONE    - file error handling 
 # DONE    - Unreachable - Set disabled
 # DONE    - Sort by status
-# PARTIAL - Export Results/Job Status (Save Job)
+# PARTIAL - Export Results/Job Status (Still need to export to JSON, and Input/Output Data options somewhere)
+# PARTIAL - Custom job status from scripts (will need to change the way icon images are handled in the job list)
 #         - Job System (Job files, save status)
 #         - Media Buttons (Run, Run All, Pause)
 #         - Preferences/Settings
 #         - Input data for jobs 
 #         - Return data from jobs
-# PARTIAL - Custom job status from scripts
 #         - Tooltips
+#         - Drag and Drop Support for CSV/JSON input
 
 # BUG
 #################
-#         - Colour isn't right on unreachable jobs after being selected
+# FIXED   - Colour isn't right on unreachable jobs after being selected
 #         - Job log is created even if don't connect - will need custom log handling
 #         - IP addr doesn't update unless clicked on
 #         - Focused job doesn't change upon status filter selection
+#         - DNS lookup still tries to update even if filter is inplace
+#         - Importing csv doesn't fully clear the joblist
 
 class Application(tk.Tk):
 
@@ -117,6 +121,10 @@ class Application(tk.Tk):
         ###
         ### Tree/Job View (Left side) config
         ###
+        
+        self.list_filter_frame = tk.Frame(self)
+        self.list_filter = ListFilter(self.list_filter_frame, self)
+        self.list_filter.place(relheight=1, relwidth=1)
         
         self.job_list_frame = tk.Frame(self)#, bd=1, relief="sunken")
         self.job_list = JobList(self.job_list_frame, self)
@@ -237,17 +245,26 @@ class Application(tk.Tk):
 
         self.top_bar_frame_1.place(x=4, y=2, relwidth=1, width=-4, height=35)
         self.top_bar_frame_2.place(x=4, y=self.button_height+2, width=396)
-        self.job_list_frame.place(x=0, y=(self.button_height*2)+2, relheight=1, height=-self.button_height*2-25, width=400)
+        self.list_filter_frame.place(x=10, y=(self.button_height*2)+2, height=self.button_height, width=400)
+        self.job_list_frame.place(x=0, y=(self.button_height*3)+2, relheight=1, height=-self.button_height*3-25, width=400)
         self.job_data_frame.place(x=400, y=(self.button_height*2)+2, relheight=1, height=-self.button_height*2-25, relwidth=1, width=-402)
         self.status_bar_frame.pack(side="bottom", fill="x")
 
         if self.debug:
-            self.request_file("test.csv")
+            self.request_file("license_check.csv")
         
     ###
     ### General GUI Update functions
     ###
-    
+
+    def check_device_filter(self, index):
+        pass
+        """if self.device_data[index]['status'].capitalize() == self.job_list.status_header.get() or\
+            self.job_list.status_header.get() == "Status":
+            return True
+        else:
+            return False"""
+
     def enable_entry(self):
         if self.enable_password_bool.get() == 1:
             self.enable_password_entry.grid(row=0, column=2, padx=1)
@@ -387,7 +404,24 @@ class Application(tk.Tk):
     ###
     
     def export_current(self):
-        ExportMenu(self, self.filename)
+        csv_file = fd.asksaveasfilename(initialdir = "/<file_name>", defaultextension='.csv', filetypes=(("CSV File", "*.csv"), ("JSON File", "*.json")))
+        if csv_file[-4:] == ".csv": # CSV 
+            export_data = [['Hostname', 'Status']]
+            _filter = self.job_list.status_header.get()
+            if _filter == "Status": # No Filter
+                for device in self.device_data:
+                    export_data.append([device['hostname'], device['status']])
+            else:
+                for device in self.device_data:
+                    if device['status'] == _filter:
+                        export_data.append([device['hostname'], device['status']])
+
+            with open(f"{csv_file}", 'w') as csv_file:
+                for line in export_data:
+                    csv_file.write(f"{','.join(line)}\n")
+
+        else:                       # JSON
+            pass
 
     def request_file(self, filename=None):
         if filename == None:
@@ -444,6 +478,7 @@ class Application(tk.Tk):
                             'hostname' : hostname,
                             'address' : 'N/a',
                             'status' : 'pending',
+                            'image' : 'pending',
                             'index' : index,
                             'log_folder' : f"./jobs/{filename[:-4]}/logs/{hostname}/",
                             'additional_data' : additional_data
