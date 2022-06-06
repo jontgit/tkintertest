@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+from tooltip import CreateToolTip
 import tkinter.font as font
 import re
+import os 
 
 class ListFilter(tk.Frame):
     
@@ -27,14 +29,16 @@ class ListFilter(tk.Frame):
 
     def create_headers(self):
         self.hostname_header = ttk.Button(self, text="Hostname")
-        self.hostname_header.place(x=0, y=0, width=191, relheight=1)
-        print("HEADER")
+        self.hostname_header.place(x=0, y=0, width=196, relheight=1)
+        #self.hostname_header_ttp = CreateToolTip(self.hostname_header, "Script selection")
         
-        self.status_header = ttk.Combobox(self, state="readonly", values=["Status"] )
+        self.status_header = ttk.Combobox(self, state="readonly", justify='center', values=["Status"] )
         self.status_header.current(0)
         self.status_header.bind('<<ComboboxSelected>>', self.status_filter)
         self.status_header.bind('<1>', self.get_statuses)
-        self.status_header.place(x=193, y=0, width=191, relheight=1)
+        self.status_header.place(x=198, y=0, width=196, relheight=1)
+        self.status_header.option_add('*TCombobox*Listbox.Justify', 'center') 
+        self.status_header_ttp = CreateToolTip(self.status_header, "Status filter")
         
 class JobList(tk.Canvas):
     
@@ -57,7 +61,7 @@ class JobList(tk.Canvas):
         self.skip_select = True
         
         self.focus_index = 0
-        self.highlight_index = -1
+        self.highlight_index = None
         
         self.frame = tk.Frame(self)
         self.create_drop_down()
@@ -125,14 +129,29 @@ class JobList(tk.Canvas):
                 "bg" : "grey10",
                 "bd" : "grey90"
             },
+            "disabled_selected" : {
+                "fg" : "grey50",
+                "bg" : "grey25",
+                "bd" : "grey20"
+            },
+            "disabled_selected_focus" : {
+                "fg" : "grey50",
+                "bg" : "grey25",
+                "bd" : "grey90"
+            },
             "disabled_highlight" : {
                 "fg" : "grey50",
-                "bg" : "grey15",
+                "bg" : "grey30",
                 "bd" : "grey20"
             },
             "disabled_highlight_focus" : {
                 "fg" : "grey50",
-                "bg" : "grey20",
+                "bg" : "grey30",
+                "bd" : "grey90"
+            },
+            "disabled_highlight_focus_selected" : {
+                "fg" : "grey50",
+                "bg" : "grey35",
                 "bd" : "grey90"
             },
         }
@@ -178,19 +197,22 @@ class JobList(tk.Canvas):
     def _set_command(self, command):
         pass
 
-    def update_job_icon(self, row, severity):
-        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
+    def update_job_icon(self, row, icon):
+        self.root.device_data[row]['icon'] = icon
+        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['icon']])
 
-    def update_job_status(self, row):        
-        self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
+    def update_job_status(self, row, status):
+        #self.jobs[row][1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
+        self.root.device_data[row]['status'] = status
         self.jobs[row][2].configure(text=self.root.device_data[row]['status'].capitalize())
         
         if self.root.device_data[row]['active']:
             self._set_row_enabled(row)
         else:
             self._set_row_disabled(row)
+            
+        self._set_row_colour_(row)
     
-
     ###
     ### ROW COLOUR/ATTRIBUTE FUNCTIONS
     ###
@@ -257,6 +279,26 @@ class JobList(tk.Canvas):
                 colour = self.colour_pallete['disabled_highlight_focus']
                 #print("Disabled & Highlighted & Focused")
                 
+                
+            # Disabled & Highlighted & Focused & Selected
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index == self.highlight_index and \
+                frame_index == self.focus_index and \
+                frame_index in self.selected_jobs:
+
+                colour = self.colour_pallete['disabled_highlight_focus_selected']
+                #print("Disabled & Highlighted & Focused")
+                
+            # Selected
+            if frame_index in self.selected_jobs:
+
+                colour = self.colour_pallete['selection']
+                #print("Selected")
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index in self.selected_jobs:
+
+                colour = self.colour_pallete['disabled_selected']
+            
         else:    
                 
             # Selected
@@ -291,6 +333,13 @@ class JobList(tk.Canvas):
 
                 colour = self.colour_pallete['disabled_focus']
                 #print("Disabled & Focused")
+                
+            # Disabled & Selected
+            if not self.root.device_data[frame_index]['active'] and \
+                frame_index in self.selected_jobs:
+
+                colour = self.colour_pallete['disabled_selected']
+                #print("Disabled & Focused")
 
 
         for cell in self.jobs[frame_index][3].winfo_children():
@@ -314,7 +363,7 @@ class JobList(tk.Canvas):
         If a job is not active, it cannot be run at all.
         """
         frame = self.jobs[row]
-        frame[1].configure(image=self.active_status_images[self.root.device_data[row]['status']])
+        frame[1].configure(image=self.active_status_images[self.root.device_data[row]['icon']])
         self._set_row_colour_(row)
 
     ###
@@ -362,12 +411,13 @@ class JobList(tk.Canvas):
             # Once we've got the range, add them to
             # the selection
             for row in range(lower, upper):
-                frame = self.jobs[row][3]
-
                 if row not in self.selected_jobs:
                     self.selected_jobs.append(row)
                 
+
                 self._set_row_colour_(row)
+                print(row)
+                
             self.empty_selection = False
     
     def _select_row(self, event):
@@ -383,7 +433,6 @@ class JobList(tk.Canvas):
             self.skip_select = not self.skip_select
             
         if str(frame) != ".!frame.!joblist.!frame" or self.skip_select:
-        
             frame = self.jobs[self.highlight_index][3]
             
             if self.highlight_index not in self.selected_jobs:
@@ -447,6 +496,7 @@ class JobList(tk.Canvas):
         #print(f"RIGHT - {self.empty_selection} - {self.selected_jobs} ")
         
         self.empty_selection = True if len(self.selected_jobs) == 0 else False
+        self.right_clicked_job = self.highlight_index
         try:
             frame = event.widget.master
             if str(frame) == ".!frame2.!joblist.!frame":
@@ -454,11 +504,11 @@ class JobList(tk.Canvas):
                 
             if str(frame) != ".!frame2.!joblist.!frame" or self.skip_select:
 
-                if self.empty_selection:
-                    if self.highlight_index not in self.selected_jobs:
-                        self._select_row(event)
+                #if self.empty_selection:
+                #    if self.highlight_index not in self.selected_jobs:
+                #        self._select_row(event)
                 
-                if not self.root.device_data[self.highlight_index]['active']:
+                """if not self.root.device_data[self.highlight_index]['active']:
                     if len(self.selected_jobs) > 0:
                         enable_disable_label = f"({len(self.selected_jobs)}) Enable"
                     else:
@@ -469,18 +519,50 @@ class JobList(tk.Canvas):
                     else:
                         enable_disable_label = "Disable"
 
-                self.drop_down.entryconfigure(4, label=enable_disable_label)
+                self.drop_down.entryconfigure(6, label=enable_disable_label)"""
                 self.drop_down.tk_popup(event.x_root, event.y_root)
             
         finally:
 
             self.drop_down.grab_release()
-
         
     def _run_jobs(self):
         print("RUNNING: ",self.selected_jobs)
         self.root.put_job_in_queue(self.selected_jobs)
         self._clear_job_selection()
+
+    def _run_highlighted(self):
+        self.root.put_job_in_queue([self.right_clicked_job])
+    def _run_selected(self):
+        self.root.put_job_in_queue(self.selected_jobs)
+        self._clear_job_selection()
+    def _run_all(self):
+        self.root.put_job_in_queue([ index for index in self.root.device_data if index['status'] == "pending" ])
+    
+    def _reset_highlighted(self):
+        self._reset_job(self.right_clicked_job)
+        self.root.write_job_data()
+    def _reset_selected(self):
+        old_selection = self.selected_jobs
+        self.selected_jobs = []
+        for index in old_selection:
+            self._reset_job(index)
+        self.root.write_job_data()
+        self._clear_job_selection()
+        self.root.write_job_data()
+    def _reset_all(self):
+        for n, _ in enumerate(self.root.device_data):
+            self._reset_job(n)
+        self.root.write_job_data()
+    
+    def _disable_highlighted(self):
+        pass
+    def _disable_selected(self):
+        pass
+    def _disable_all(self):
+        pass
+
+
 
     def _toggle_enabled(self):
         for job in self.selected_jobs:
@@ -492,11 +574,33 @@ class JobList(tk.Canvas):
                 
         self.selected_jobs = []
 
-    def _reset_jobs(self):
-        pass
+    def _reset_job(self, index):
+        self.update_job_status(index, "pending")
+        self.update_job_icon(index, "pending")
+        self.root.device_data[index]['active'] = True
+        self.root.lookup_queue.put(self.root.device_data[index])
+        self._set_row_enabled(index)
+        self._set_row_colour_(index)
 
+    def _reset_jobs(self):
+        old_selection = self.selected_jobs
+        self.selected_jobs = []
+        for index in old_selection:
+            self.update_job_status(index, "pending")
+            self.update_job_icon(index, "pending")
+            self.root.device_data[index]['active'] = True
+            self.root.lookup_queue.put(self.root.device_data[index])
+            self._set_row_enabled(index)
+            self._set_row_colour_(index)
+
+        self.root.write_job_data()
+        
     def _remove_jobs(self):
         pass
+
+    def _open_putty_session(self):
+        path = __file__[:-10].replace('\\','/')
+        os.system(f"{path}/lib/putty/putty.exe {self.root.device_data[self.right_clicked_job]['hostname']} -l {self.root.username.get()} -pw {self.root.password.get()}")
 
     ###
     ### DATA LOAD FUNCTIONS
@@ -504,13 +608,38 @@ class JobList(tk.Canvas):
 
     def create_drop_down(self):
         self.drop_down = tk.Menu(self.frame, tearoff=False)
-        self.drop_down.add_command(label="Run", command=self._run_jobs)#self._set_command("run_jobs"))
-        self.drop_down.add_command(label="Reset", command=self._reset_jobs)
-        self.drop_down.add_command(label="Remove", command=self._remove_jobs)
+        #self.drop_down.add_command(label="Run", command=self._run_jobs)#self._set_command("run_jobs"))
+        #self.drop_down.add_command(label="Reset", command=self._reset_jobs)
+        #self.drop_down.add_command(label="Remove", command=self._remove_jobs)
+        
+        self.run_menu = tk.Menu(self.drop_down, tearoff=False)
+        self.run_menu.add_command(label="Highlighted", command=self._run_highlighted)
+        self.run_menu.add_command(label="Selected", command=self._run_selected)
+        self.run_menu.add_command(label="All", command=self._run_all)
+        self.run_menu_cascade = self.drop_down.add_cascade(label="Run", menu=self.run_menu)
+        
+        self.reset_menu = tk.Menu(self.drop_down, tearoff=False)
+        self.reset_menu.add_command(label="Highlighted", command=self._reset_highlighted)
+        self.reset_menu.add_command(label="Selected", command=self._reset_selected)
+        self.reset_menu.add_command(label="All", command=self._reset_all)
+        self.reset_menu = self.drop_down.add_cascade(label="Reset", menu=self.reset_menu)
+        
+        self.remove_menu = tk.Menu(self.drop_down, tearoff=False)
+        self.remove_menu.add_command(label="Highlighted", command=self._disable_highlighted)
+        self.remove_menu.add_command(label="Selected", command=self._disable_selected)
+        self.remove_menu.add_command(label="All", command=self._disable_all)
+        self.remove_menu = self.drop_down.add_cascade(label="Disable", menu=self.remove_menu)
+        
+        
         self.drop_down.add_separator()
+        self.drop_down.add_command(label="Putty Session", command=self._open_putty_session)
+        """self.drop_down.add_separator()
         self.drop_down.add_command(label="Disable", command=self._toggle_enabled)
         self.drop_down.add_command(label="Mark Complete", command=self._set_command("clear"))
         self.drop_down.add_command(label="Clear Selection", command=self._set_command("clear"))
+        self.drop_down.add_separator()"""
+        
+
 
     def clear_frame(self):
         self.frame.pack_forget()
@@ -518,14 +647,16 @@ class JobList(tk.Canvas):
             widget.destroy()
         self.create_drop_down()
         self.parent.update()
-        self.config(scrollregion=self.frame.bbox("all"))
+        self.config(scrollregion=self.bbox("all"))
 
     def load_images(self):
 
         self.active_status_images = {
             "paused" : tk.PhotoImage(file="./res/active/pause.png"),
             "config error" : tk.PhotoImage(file="./res/active/warning.png"),
+            "warning" : tk.PhotoImage(file="./res/active/warning.png"),
             "program error" : tk.PhotoImage(file="./res/active/error.png"),
+            "error" : tk.PhotoImage(file="./res/active/error.png"),
             "running" : tk.PhotoImage(file="./res/active/play.png"),
             "unreachable" : tk.PhotoImage(file="./res/active/down.png"),
             "complete" : tk.PhotoImage(file="./res/active/ok.png"),
@@ -538,12 +669,17 @@ class JobList(tk.Canvas):
         self.disabled_status_images = {
             "paused" : tk.PhotoImage(file="./res/disabled/pause.png"),
             "config error" : tk.PhotoImage(file="./res/disabled/warning.png"),
+            "warning" : tk.PhotoImage(file="./res/disabled/warning.png"),
             "program error" : tk.PhotoImage(file="./res/disabled/error.png"),
+            "error" : tk.PhotoImage(file="./res/disabled/error.png"),
             "running" : tk.PhotoImage(file="./res/disabled/play.png"),
             "unreachable" : tk.PhotoImage(file="./res/disabled/down.png"),
             "complete" : tk.PhotoImage(file="./res/disabled/ok.png"),
             "pending" : tk.PhotoImage(file="./res/disabled/pending.png"),
-            "auth error" : tk.PhotoImage(file="./res/disabled/auth.png")
+            "auth error" : tk.PhotoImage(file="./res/disabled/auth.png"),
+            "connecting" : tk.PhotoImage(file="./res/active/connect.png"),
+            "connected" : tk.PhotoImage(file="./res/active/connected.png"),
+            "queued" : tk.PhotoImage(file="./res/active/queued.png")
         }
 
     def load_device_gui(self, index, line, position):
@@ -573,9 +709,9 @@ class JobList(tk.Canvas):
         
         # STATUS IMAGES
         if not line['active']:
-            status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['status']])
+            status_icon = tk.Label(line_frame, image=self.disabled_status_images[line['icon']])
         else:
-            status_icon = tk.Label(line_frame, image=self.active_status_images[line['status']])
+            status_icon = tk.Label(line_frame, image=self.active_status_images[line['icon']])
         status_icon.place(x=200, y=0, relheight=1, width=50)
 
         # STATUS 
@@ -589,7 +725,7 @@ class JobList(tk.Canvas):
                         
         self.jobs.append((hostname, status_icon, status, line_frame))
         self._set_row_colour_(index)
-        self.frame.configure(height=position*25)
+        self.frame.configure(height=(position+1)*25)
 
     def load_data(self, data, in_filter="Status"):
         self.clear_frame()

@@ -455,6 +455,7 @@ namespace eval ttk::theme::azure-dark {
 
         ttk::style element create Combobox.field \
             image [list $I(box-basic) \
+                {readonly invalid} $I(box-invalid-readonly) \
                 {readonly disabled} $I(rect-basic) \
                 {readonly pressed} $I(rect-basic) \
                 {readonly focus hover} $I(button-hover) \
@@ -470,9 +471,10 @@ namespace eval ttk::theme::azure-dark {
             
         ttk::style element create Combobox.button \
             image [list $I(combo-button-basic) \
+                 {readonly invalid} $I(combo-button-invalid) \
                  {!readonly focus} $I(combo-button-focus) \
                  {readonly focus} $I(combo-button-hover) \
-                 {readonly hover} $I(combo-button-hover)
+                 {readonly hover} $I(combo-button-hover) 
             ] -border 5 -padding {2 6 6 6}
 
         ttk::style element create Combobox.arrow image $I(down) \

@@ -116,8 +116,8 @@ class Script():
         <SCRIPT>
 
         vars = locals()
-        del(vars[\"self\"])
-        return vars
+        if "return_data" in vars.keys():
+            return vars["return_data"]
         """
         
         self.script = script

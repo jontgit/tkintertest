@@ -28,13 +28,14 @@ class NamespaceLookup(Thread):
             if device["index"] < len(self.root.device_data):
                 if self.root.device_data[device["index"]]['hostname'] == device['hostname']:
                     self.root.device_data[device["index"]]['address'] = address
+                    if self.root.job_list.focus_index == device['index']:
+                        self.root.job_data.update_address()
+                    
         except socket.gaierror:
             if device["index"] < len(self.root.device_data):
                 if self.root.device_data[device["index"]]['hostname'] == device['hostname']:
                     self.root.device_data[device["index"]]['active'] = False
-                    self.root.device_data[device["index"]]['status'] = "unreachable"
-        
-        if device["index"] < len(self.root.device_data):
-            if self.root.check_device_filter(device["index"]):
-                self.root.job_list.update_job_status(device["index"])
-                self.lookup_queue.task_done()
+                    self.root.job_list.update_job_status(device["index"], "unreachable")
+                    self.root.job_list.update_job_icon(device["index"], "unreachable")
+
+        self.lookup_queue.task_done()
