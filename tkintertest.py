@@ -710,7 +710,7 @@ class Application(TkinterDnD.Tk):
 
 
                 if not os.path.exists(f"./jobs/{self.filename}/input/{filename}"):
-                    shutil.copyfile(filename, f"./jobs/{self.filename}/input/{filename}")
+                    shutil.copyfile(filepath, f"./jobs/{self.filename}/input/{filename}")
 
                 for device in self.device_data:
                     self.lookup_queue.put(device)
@@ -734,7 +734,6 @@ class Application(TkinterDnD.Tk):
 
                 self.change_focus(0)
             
-            #self.status.set("Idle")
 
 if __name__ == "__main__":
     root = Application()

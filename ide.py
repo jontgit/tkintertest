@@ -159,7 +159,7 @@ class Script():
         amended_script = ""
         for line in self.text.get("1.0","end").split('\n'):
             new_line = line.replace("send_command", "self.remote_connection.send_command")
-            new_line = line.replace("send_command", "self.remote_connection.send_command")
+            new_line = line.replace("set_status", "self.remote_connection.set_status")
             amended_script += f"        {new_line}\n"
         return amended_script
 
@@ -329,7 +329,7 @@ if __name__ == '__main__':
     test_frame.place(relheight=1, relwidth=1)
 
 
-    text = Editor(root)
+    text = Editor(root, None, )
     text.place(relheight=1, relwidth=1)
     #line_count = TextLineNumbers(test_frame)
     #line_count.attach(text)
