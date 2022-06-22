@@ -15,16 +15,16 @@ from queue import Queue
 from os import listdir
 from functools import partial
 
-from lib.ide import Editor
-from lib.manager import ManagerThread
-from lib.namespace_lookup import NamespaceLookup
-from lib.jobdata import JobData
-from lib.joblist import JobList
-from lib.joblist import ListFilter
-from lib.entry import CustomEntry
+from .ide import Editor
+from .manager import ManagerThread
+from .namespace_lookup import NamespaceLookup
+from .jobdata import JobData
+from .joblist import JobList
+from .joblist import ListFilter
+from .entry import CustomEntry
 #from .option_menu import CustomOptionMenu
 #from .export_menu import ExportMenu
-from lib.tooltip import CreateToolTip
+from .tooltip import CreateToolTip
 
 # TODO 
 #################
@@ -43,8 +43,9 @@ from lib.tooltip import CreateToolTip
 # DONE    - Drag and Drop Support for CSV/JSON input
 # DONE    - Device type Entry
 # DONE    - Differing Enable Password
-#         - IDE Improvements (Script generator syntax, hotkeys, syntax highlighting, line numbers, default script)
+#         - Differing Enable Password
 #         - Keyboard Shortcuts
+#         - IDE Improvements (Script generator syntax, hotkeys, syntax highlighting, line numbers, default script)
 #         - Preferences/Settings
 
 # BUG
@@ -368,7 +369,7 @@ class Application(TkinterDnD.Tk):
         self.file_menu.add_command(label="Export File           Ctrl+E", font=("Consolas", 10), command=self.request_file)
         self.file_menu.add_separator()
 
-        directory = __file__[:-8].replace("\\", "/")
+        directory = __file__[:-15].replace("\\", "/")
         for folder in os.listdir(f"{directory}/jobs"):
             self.file_menu.add_command(label=folder, font=("Consolas", 10), command=partial(self.open_job, folder))
             print(folder)
@@ -496,10 +497,10 @@ class Application(TkinterDnD.Tk):
 
     def _load_scripts(self):
         self.scripts = {}
-        self.base_script = importlib.import_module("lib.base_script")
-        for file in listdir("./lib/scripts/"):
+        self.base_script = importlib.import_module(".base_script", package="main")
+        for file in listdir("./scripts/"):
             if file != "__pycache__":
-                my_module = importlib.import_module(f"lib.scripts.{file[:-3]}")
+                my_module = importlib.import_module(f".scripts.{file[:-3]}")
                 test = my_module.Script("")
                 self.scripts[test.title] = my_module
 
@@ -764,7 +765,3 @@ class Application(TkinterDnD.Tk):
                         self.lookup_queue.put(device)
 
                 self.change_focus(0)
-                
-if __name__ == "__main__":
-    application = Application()
-    application.mainloop()
