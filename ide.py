@@ -98,6 +98,23 @@ class DialogWindow(tk.Toplevel):
             pass
 
 
+class LineCounter(tk.Canvas):
+    def __init__(self, parent, text=""):
+        super().__init__(parent, bg="grey15")
+        self.text = text
+        #self.draw_linecount()
+
+    def clear_linecount(self):
+        self.pack_forget()
+        for widget in self.winfo_children():
+            widget.destroy()
+
+    def draw_linecount(self, line_count):
+        count = len(self.text.split('\n'))
+        for line in range(1, line_count):
+            label = tk.Label(self, text=line, font=("Consolas", 14, "bold"), bg="grey15", fg="grey50")
+            label.place(x=0, y=22*(line), width=40)
+
 class Editor(tk.Frame):
     def __init__(self, parent, root, script):
         super().__init__(parent, bg="grey15")
@@ -152,15 +169,22 @@ class Script():
         self.edit_menu.add_separator()
         self.edit_menu.add_command(label="Find", command=self.find)
 
-        self.text = CustomText(self, self.script.base_script)
+
+        self.line_count = LineCounter(self)
+        self.line_count.place(relheight=1, width=40)
+
+        self.text = CustomText(self, self.script.base_script, self.line_count)
         self.text.place(relheight=1, relwidth=1, x=40, width=-40)
 
     def procress_script(self):
         amended_script = ""
         for line in self.text.get("1.0","end").split('\n'):
-            new_line = line.replace("send_command", "self.remote_connection.send_command")
-            new_line = line.replace("set_status", "self.remote_connection.set_status")
+            if "send_command" in line:
+                new_line = line.replace("send_command", "self.remote_connection.send_command")
+            else:
+                new_line = line.replace("set_status", "self.remote_connection.set_status")
             amended_script += f"        {new_line}\n"
+            #amended_script += f"        yield\n"
         return amended_script
 
     def remove_newlines(self):
@@ -210,7 +234,6 @@ class Script():
     def save_as(self):
         self.save_window = DialogWindow()
         
-
     def exit(self):
         pass
 
@@ -245,7 +268,7 @@ class CustomText(tk.Text):
     clean_highlights(tag) - Removes all highlights of the given tag.
     search_re(pattern) - Uses the python re library to match patterns.
     """
-    def __init__(self, master, text):
+    def __init__(self, master, text, linecount):
         super().__init__(master, bg="grey15", fg="grey80", insertbackground="grey80", font=("Consolas", 14, "bold"), wrap="none")
         self.master = master
 
@@ -260,10 +283,20 @@ class CustomText(tk.Text):
         for highlight in syntax:
             self.tag_config(highlight["tag"], foreground=highlight["fg"])
         
+        self.linecount = linecount
+
         self.bind("<KeyRelease>", self.highlight_text)
-        self.bind("<Return>", self.include_tab)
+        #self.bind("<Return>", self.include_tab)
+        #self.bind("<BackSpace>", self.check_linecount)
+
+        self.check_linecount()
+
+    def check_linecount(self, event=None):
+        self.linecount.clear_linecount()
+        self.linecount.draw_linecount(len(self.get("1.0", "end").split('\n')))
 
     def include_tab(self, event):
+        self.check_linecount()
         previous_line = self.get(str(float(self.index("end"))-1),str(float(self.index("end"))))[:-1]
         if re.match(".*:\s*$", previous_line):
             self.insert("end", "\n    ")
@@ -278,6 +311,8 @@ class CustomText(tk.Text):
                 self.highlight_pattern(rf"(?![^\w\_])({vars})(?=[^\w\_])", highlight["tag"])
             else:
                 self.highlight_pattern(highlight["regex"], highlight["tag"])
+        
+        self.check_linecount()
         
     def highlight(self, tag, start, end):
         self.tag_add(tag, start, end)

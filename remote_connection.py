@@ -97,6 +97,7 @@ class RemoteConnection():
         self.remote_connection.disconnect()
 
         if self.status == "running": # Else custom status
+            print(self.status)
             self.set_status("complete", "complete")
 
         self.thread_status = "complete"
@@ -120,7 +121,7 @@ class RemoteConnection():
                 response = self.remote_connection.send_command(command, expect_string=".*#", delay_factor=60, read_timeout=60)
 
             else:
-                response = self.remote_connection.send_command(command)#, read_timeout=10)
+                response = self.remote_connection.send_command(command, expect_string=".*#")#, read_timeout=10)
 
         return response
 
@@ -147,7 +148,8 @@ class RemoteConnection():
         while self.running:
             if not self.pause_event.isSet():
                 try:
-                    self.set_status(self.old_status, self.old_icon)
+                    if self.old_status == "paused":
+                        self.set_status(self.old_status, self.old_icon)
                     self.return_data = next(script_iter)
                     
                     

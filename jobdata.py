@@ -221,13 +221,20 @@ class JobData(tk.Frame):
         for widget in self.return_data_tab.winfo_children():
             widget.destroy()
 
-        for n, entry in enumerate(self.selection_info['return_data']):
-            print(entry)
-            if isinstance(entry, str):
-                text = tk.Text(self.return_data_tab, height=1, borderwidth=0)
-                text.insert(1.0, entry)
-                text.configure(state="disabled")
-                text.grid(row=n, column=1)
+        print(self.selection_info['return_data'])
+        if isinstance(self.selection_info['return_data'], list):
+            for n, entry in enumerate(self.selection_info['return_data']):
+                if isinstance(entry, str):
+                    text = tk.Text(self.return_data_tab, height=1, borderwidth=0)
+                    text.insert(1.0, entry)
+                    text.configure(state="disabled")
+                    text.grid(row=n, column=1)
+
+        elif isinstance(self.selection_info['return_data'], str):
+            text = tk.Text(self.return_data_tab, height=1, borderwidth=0)
+            text.insert(1.0, self.selection_info['return_data'])
+            text.configure(state="disabled")
+            text.grid(row=0, column=0)
 
             #label = tk.Label(self.return_data_tab, text=entry.replace("ï»¿", ""))
 

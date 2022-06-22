@@ -600,7 +600,8 @@ class JobList(tk.Canvas):
 
     def _open_putty_session(self):
         path = __file__[:-10].replace('\\','/')
-        os.system(f"{path}/lib/putty/putty.exe {self.root.device_data[self.right_clicked_job]['hostname']} -l {self.root.username.get()} -pw {self.root.password.get()}")
+        print(f"\"{path}/lib/putty/putty.exe\"")
+        os.system(f"\"{path}/lib/putty/putty.exe\" {self.root.device_data[self.right_clicked_job]['hostname']} -l {self.root.username.get()} -pw {self.root.password.get()}")
 
     ###
     ### DATA LOAD FUNCTIONS

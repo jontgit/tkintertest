@@ -51,6 +51,8 @@ from tooltip import CreateToolTip
 # FIXED   - Job log is created even if don't connect - will need custom log handling
 # FIXED   - IP addr doesn't update unless clicked on
 #         - Focused job doesn't change upon status filter selection
+#         - Return Data doesn't format properly
+# FIXED   - Custom status are lost upon complete
 # FIXED   - Unreachable Updates don't change colour/Status
 # FIXED   - DNS lookup still tries to update even if filter is inplace
 # FIXED   - Importing csv doesn't fully clear the joblist
@@ -69,7 +71,7 @@ class Application(TkinterDnD.Tk):
         self.button_height = 35
         self.tk.call("set_theme", "dark")
 
-        self.debug = True
+        self.debug = False
         self.pause = False
         self.pause_event = Event()
         self.selection_index = 0
@@ -317,8 +319,11 @@ class Application(TkinterDnD.Tk):
     ###
 
     def import_file(self, event):
-        if event.data.endswith(".csv") or event.data.endswith(".job"):
-            self.import_csv(event.data)
+        file = event.data[1:-1]
+        print(file[-4:])
+        if file[-4:] == ".csv" or file[-4:] == ".job":
+            print(event.data[1:-1])
+            self.import_csv(event.data[1:-1])
 
     def pause_command(self):
         self.pause = not self.pause
@@ -395,9 +400,11 @@ class Application(TkinterDnD.Tk):
         return valid
 
     def change_script_selection(self, event):
+        self.script_select.state(["!invalid"])
         self.script_select.selection_clear()
         
     def change_device_selection(self, event):
+        self.device_selection_entry.state(["!invalid"])
         self.device_selection_entry.selection_clear()
 
     def check_device_filter(self, index):
@@ -521,6 +528,7 @@ class Application(TkinterDnD.Tk):
             while not self.complete_queue.empty():
                 complete_job = self.complete_queue.get()
                 self.device_data[complete_job['index']]['return_data'] = complete_job['return_data']
+                print(complete_job['return_data'])
                 print(f"Job Complete! {complete_job['hostname']}")
                 #print(json.dumps(self.device_data[complete_job['index']], indent=4))
 
