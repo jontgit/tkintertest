@@ -1,8 +1,0 @@
-Hostname,Status
-comp1-asa.local,Got Users,"username test password $sha512$5000$7bB8bwUgbJkHqVUEU3HbEA==$taYunUJkalgRrWLv34yJFA== pbkdf2 privilege 15,username dream password $sha512$5000$zsuv6nYJ6eF1eh28csHJ8Q==$GXjKgLWe+zw6hNJ8UtxbBQ== pbkdf2,username megamega password $sha512$5000$vWxkEXDC8VjSx/b3GTrwdQ==$eW/tVk/ZXvOrpbNz7jNqFw== pbkdf2,username meme password $sha512$5000$J8JGs/1DR37qo4cxAccutA==$I+m/KGXVu/JIfXfIJlDOHA== pbkdf2"
-comp2-asa.local,pending
-comp3-asa.local,pending
-comp4-asa.local,pending
-comp5-asa.local,unreachable
-comp6-asa.local,pending
-comp6-asa.local.local.local.local.local,unreachable
