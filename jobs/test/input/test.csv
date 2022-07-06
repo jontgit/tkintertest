@@ -1,8 +1,0 @@
-hostname,localhost1,localhost2
-comp1-asa.local,192.168.0.11,192.168.0.12
-comp2-asa.local,192.168.0.11,192.168.0.12
-comp3-asa.local,192.168.0.11,192.168.0.12
-comp4-asa.local,192.168.0.11,192.168.0.12
-comp5-asa.local,192.168.0.11,192.168.0.12
-comp6-asa.local,192.168.0.11,192.168.0.12
-comp6-asa.local.local.local.local.local,192.168.0.11,192.168.0.12
